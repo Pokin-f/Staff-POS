@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Staff Operator POS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,600;0,700;1,500;1,600&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <span class="brand-eyebrow">Staff Operator POS 45th PRE Aniversary Reunion</span>
+  <h1 class="brand-title">What's it gonna be?</h1>
+</header>
+
+<main id="menu-screen" class="screen">
+  <div id="menu-items" class="menu-grid"></div>
+
+  <div class="basket-bar">
+    <div class="basket-total">
+      <span class="basket-label">Total</span>
+      <strong id="basket-total" class="basket-amount">฿0</strong>
+    </div>
+    <button id="checkout-btn" class="btn btn-primary" disabled>Checkout</button>
+  </div>
+</main>
+
+<main id="checkout-screen" class="screen hidden">
+  <div class="ticket">
+    <div id="qr-state">
+      <span class="ticket-eyebrow">Scan to pay</span>
+      <p class="ticket-amount" id="checkout-amount">฿0</p>
+      <div class="qr-frame">
+        <img id="qr-image" class="qr-image" alt="PromptPay QR code">
+      </div>
+      <p class="countdown-row">Expires in <span id="countdown" class="countdown-mono">--:--</span></p>
+      <div class="ticket-actions">
+        <button id="recheck-btn" class="btn btn-secondary">Check now</button>
+        <button id="cancel-btn" class="btn btn-ghost">Cancel order</button>
+      </div>
+    </div>
+
+    <div id="paid-state" class="result-state hidden">
+      <div class="result-icon success">&#10003;</div>
+      <h2>Paid</h2>
+      <p id="paid-amount"></p>
+    </div>
+
+    <div id="expired-state" class="result-state hidden">
+      <div class="result-icon neutral">&times;</div>
+      <h2>Order expired</h2>
+      <button id="retry-btn" class="btn btn-primary">New order</button>
+    </div>
+
+    <div id="cancelled-state" class="result-state hidden">
+      <div class="result-icon neutral">&times;</div>
+      <h2>Order cancelled</h2>
+      <button id="new-order-btn" class="btn btn-primary">New order</button>
+    </div>
+  </div>
+</main>
+
+<script src="app.js"></script>
+</body>
+</html>

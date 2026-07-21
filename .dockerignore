@@ -1,0 +1,7 @@
+node_modules
+.env
+.git
+service-account.json
+orders.sqlite
+orders.sqlite-*
+*.log

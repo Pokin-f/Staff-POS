@@ -1,0 +1,37 @@
+services:
+  pos:
+    build: .
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - DB_PATH=/app/data/orders.sqlite
+    volumes:
+      - pos-data:/app/data
+      - ./service-account.json:/app/service-account.json:ro
+    expose:
+      - "3000"
+
+  # Terminates HTTPS with an auto-renewed Let's Encrypt cert, so PUBLIC_BASE_URL
+  # (the address you give GBPrimePay for verification/webhook) is a real https://
+  # URL. Requires a domain's DNS A record already pointing at this server's IP,
+  # and ports 80+443 open/free on the host.
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      - DOMAIN=${DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - pos
+
+volumes:
+  pos-data:
+  caddy-data:
+  caddy-config:
