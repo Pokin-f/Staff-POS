@@ -16,7 +16,21 @@
   <h1 class="brand-title">What's it gonna be?</h1>
 </header>
 
-<main id="menu-screen" class="screen">
+<main id="table-screen" class="screen">
+  <div class="table-select">
+    <span class="table-select-eyebrow">Step 1</span>
+    <h2 class="table-select-title">Which table are you on?</h2>
+    <div id="table-grid" class="table-grid"></div>
+    <button id="walkin-btn" class="btn btn-ghost table-walkin">Walk-in / No table</button>
+  </div>
+</main>
+
+<main id="menu-screen" class="screen hidden">
+  <div class="table-indicator">
+    <span class="table-indicator-label">Table <strong id="current-table">–</strong></span>
+    <button id="change-table-btn" class="btn-linky" type="button">Change</button>
+  </div>
+
   <div id="menu-items" class="menu-grid"></div>
 
   <div class="basket-bar">
@@ -31,7 +45,7 @@
 <main id="checkout-screen" class="screen hidden">
   <div class="ticket">
     <div id="qr-state">
-      <span class="ticket-eyebrow">Scan to pay</span>
+      <span class="ticket-eyebrow">Scan to pay · Table <span id="ticket-table"></span></span>
       <p class="ticket-amount" id="checkout-amount">฿0</p>
       <div class="qr-frame">
         <img id="qr-image" class="qr-image" alt="PromptPay QR code">

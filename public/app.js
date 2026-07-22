@@ -1,6 +1,10 @@
 (() => {
+  const tableScreen = document.getElementById('table-screen');
   const menuScreen = document.getElementById('menu-screen');
   const checkoutScreen = document.getElementById('checkout-screen');
+  const tableGridEl = document.getElementById('table-grid');
+  const currentTableEl = document.getElementById('current-table');
+  const ticketTableEl = document.getElementById('ticket-table');
   const menuItemsEl = document.getElementById('menu-items');
   const basketTotalEl = document.getElementById('basket-total');
   const checkoutBtn = document.getElementById('checkout-btn');
@@ -16,12 +20,13 @@
   const paidAmountEl = document.getElementById('paid-amount');
 
   const ITEM_META = {
-    beer: { image: 'images/beer.png', tone: 'beer', alt: 'Bottle of Chang beer' },
+    beer: { image: 'images/beer_pitcher.png', tone: 'beer', alt: 'Bottle of Chang beer' },
     regency: { image: 'images/regency.png', tone: 'regency', alt: 'Bottle of Regency brandy' }
   };
 
   let menu = [];
   const basket = {}; // { itemId: qty }
+  let selectedTable = null;
   let currentOrderId = null;
   let pollTimer = null;
   let countdownTimer = null;
@@ -84,9 +89,44 @@
   }
 
   function showScreen(screen) {
+    tableScreen.classList.toggle('hidden', screen !== 'table');
     menuScreen.classList.toggle('hidden', screen !== 'menu');
     checkoutScreen.classList.toggle('hidden', screen !== 'checkout');
   }
+
+  async function loadTables() {
+    const res = await fetch('/api/orders/tables');
+    const list = await res.json();
+    tableGridEl.innerHTML = '';
+    for (const label of list) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'table-btn';
+      btn.textContent = label;
+      btn.dataset.table = label;
+      tableGridEl.appendChild(btn);
+    }
+  }
+
+  function selectTable(label) {
+    selectedTable = label;
+    currentTableEl.textContent = label;
+    showScreen('menu');
+  }
+
+  tableGridEl.addEventListener('click', (e) => {
+    const btn = e.target.closest('.table-btn');
+    if (!btn) return;
+    selectTable(btn.dataset.table);
+  });
+
+  document.getElementById('walkin-btn').addEventListener('click', () => {
+    selectTable('Walk-in');
+  });
+
+  document.getElementById('change-table-btn').addEventListener('click', () => {
+    showScreen('table');
+  });
 
   function showCheckoutState(state) {
     qrState.classList.toggle('hidden', state !== 'qr');
@@ -100,8 +140,9 @@
     stopCountdown();
     for (const key of Object.keys(basket)) delete basket[key];
     currentOrderId = null;
+    selectedTable = null;
     renderMenu();
-    showScreen('menu');
+    showScreen('table');
   }
 
   function stopPolling() {
@@ -172,7 +213,7 @@
       const res = await fetch('/api/orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ items })
+        body: JSON.stringify({ items, table: selectedTable })
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
@@ -187,6 +228,7 @@
 
     currentOrderId = order.id;
     checkoutAmount.textContent = money(order.total);
+    ticketTableEl.textContent = order.table || selectedTable || '';
     qrImage.src = order.qrImage;
     showCheckoutState('qr');
     showScreen('checkout');
@@ -212,5 +254,6 @@
   document.getElementById('retry-btn').addEventListener('click', resetToMenu);
   document.getElementById('new-order-btn').addEventListener('click', resetToMenu);
 
+  loadTables();
   loadMenu();
 })();

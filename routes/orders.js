@@ -3,6 +3,7 @@ const express = require('express');
 
 const store = require('../data/store');
 const menu = require('../config/menu');
+const tables = require('../config/tables');
 const gbprimepay = require('../services/gbprimepay');
 const { confirmOrderPaid } = require('../services/paymentConfirmation');
 
@@ -34,9 +35,23 @@ function buildOrderLines(items) {
   return { lines, total };
 }
 
+// Table label the staff picks before ordering. Kept as a short free-form string
+// so it flows straight through to the order and the accounting log.
+function normalizeTable(raw) {
+  const table = String(raw == null ? '' : raw).trim();
+  if (!table) {
+    throw new Error('Table is required');
+  }
+  if (table.length > 32) {
+    throw new Error('Invalid table');
+  }
+  return table;
+}
+
 function publicOrderView(order) {
   return {
     id: order.id,
+    table: order.table,
     items: order.items,
     total: order.total,
     status: order.status,
@@ -49,9 +64,14 @@ router.get('/menu', (req, res) => {
   res.json(menu.getMenu());
 });
 
+router.get('/tables', (req, res) => {
+  res.json(tables.getTables());
+});
+
 router.post('/', async (req, res) => {
-  let lines, total;
+  let lines, total, table;
   try {
+    table = normalizeTable(req.body.table);
     ({ lines, total } = buildOrderLines(req.body.items));
   } catch (err) {
     return res.status(400).json({ error: err.message });
@@ -75,7 +95,7 @@ router.post('/', async (req, res) => {
     return res.status(502).json({ error: `Could not create payment QR: ${err.message}` });
   }
 
-  const order = store.createOrder({ id, referenceNo, items: lines, total, expiresAt, qrImage });
+  const order = store.createOrder({ id, referenceNo, table, items: lines, total, expiresAt, qrImage });
   res.status(201).json(publicOrderView(order));
 });
 

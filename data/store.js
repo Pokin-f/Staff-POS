@@ -22,11 +22,19 @@ db.exec(`
   )
 `);
 
+// Migration: add table_no to DBs created before table selection existed, so an
+// upgrade never crashes on a missing column.
+const orderCols = db.prepare('PRAGMA table_info(orders)').all();
+if (!orderCols.some((c) => c.name === 'table_no')) {
+  db.exec('ALTER TABLE orders ADD COLUMN table_no TEXT');
+}
+
 function rowToOrder(row) {
   if (!row) return null;
   return {
     id: row.id,
     referenceNo: row.reference_no,
+    table: row.table_no,
     items: JSON.parse(row.items_json),
     total: row.total,
     status: row.status,
@@ -37,12 +45,12 @@ function rowToOrder(row) {
   };
 }
 
-function createOrder({ id, referenceNo, items, total, expiresAt, qrImage }) {
+function createOrder({ id, referenceNo, table, items, total, expiresAt, qrImage }) {
   const now = Date.now();
   db.prepare(`
-    INSERT INTO orders (id, reference_no, items_json, total, status, qr_image, created_at, expires_at)
-    VALUES (?, ?, ?, ?, 'pending_payment', ?, ?, ?)
-  `).run(id, referenceNo, JSON.stringify(items), total, qrImage, now, expiresAt);
+    INSERT INTO orders (id, reference_no, table_no, items_json, total, status, qr_image, created_at, expires_at)
+    VALUES (?, ?, ?, ?, ?, 'pending_payment', ?, ?, ?)
+  `).run(id, referenceNo, table || null, JSON.stringify(items), total, qrImage, now, expiresAt);
   return getOrder(id);
 }
 

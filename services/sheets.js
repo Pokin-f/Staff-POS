@@ -1,7 +1,7 @@
 const path = require('path');
 const { google } = require('googleapis');
 
-const HEADER = ['Timestamp', 'Order ID', 'Items', 'Total (THB)', 'GBPrimePay Ref', 'Status'];
+const HEADER = ['Timestamp', 'Order ID', 'Table', 'Items', 'Total (THB)', 'GBPrimePay Ref', 'Status'];
 
 let sheetsClientPromise = null;
 let headerEnsured = false;
@@ -33,7 +33,7 @@ function sheetNameFromRange(range) {
 // duplicate header even if two payments land at the same time.
 async function ensureHeaderRow(sheets, spreadsheetId, range) {
   if (headerEnsured) return;
-  const headerRange = `${sheetNameFromRange(range)}!A1:F1`;
+  const headerRange = `${sheetNameFromRange(range)}!A1:G1`;
   const res = await sheets.spreadsheets.values.get({ spreadsheetId, range: headerRange });
   const firstRow = res.data.values && res.data.values[0];
   if (!firstRow || firstRow.length === 0) {
@@ -49,7 +49,7 @@ async function ensureHeaderRow(sheets, spreadsheetId, range) {
 
 async function appendPaidOrderRow(order) {
   const spreadsheetId = process.env.GOOGLE_SHEET_ID;
-  const range = process.env.GOOGLE_SHEET_RANGE || 'Sheet1!A:F';
+  const range = process.env.GOOGLE_SHEET_RANGE || 'Sheet1!A:G';
   if (!spreadsheetId) {
     throw new Error('GOOGLE_SHEET_ID is not set');
   }
@@ -64,6 +64,7 @@ async function appendPaidOrderRow(order) {
       values: [[
         new Date(order.paidAt || Date.now()).toISOString(),
         order.id,
+        order.table || '',
         summarizeItems(order.items),
         order.total,
         order.referenceNo,
