@@ -33,12 +33,27 @@
 
   <div id="menu-items" class="menu-grid"></div>
 
-  <div class="basket-bar">
-    <div class="basket-total">
-      <span class="basket-label">Total</span>
-      <strong id="basket-total" class="basket-amount">฿0</strong>
+  <div class="order-footer">
+    <div class="coupon-row">
+      <div id="coupon-entry" class="coupon-entry">
+        <input id="coupon-input" class="coupon-input" type="text" placeholder="Coupon code"
+               autocomplete="off" autocapitalize="characters" spellcheck="false">
+        <button id="coupon-apply-btn" class="btn btn-secondary btn-small" type="button">Apply</button>
+      </div>
+      <div id="coupon-applied" class="coupon-applied hidden">
+        <span id="coupon-applied-text" class="coupon-applied-text"></span>
+        <button id="coupon-remove-btn" class="btn-linky" type="button">Remove</button>
+      </div>
     </div>
-    <button id="checkout-btn" class="btn btn-primary" disabled>Checkout</button>
+
+    <div class="basket-bar">
+      <div class="basket-total">
+        <span class="basket-label">Total</span>
+        <strong id="basket-total" class="basket-amount">฿0</strong>
+        <span id="basket-discount-note" class="basket-discount-note hidden"></span>
+      </div>
+      <button id="checkout-btn" class="btn btn-primary" disabled>Checkout</button>
+    </div>
   </div>
 </main>
 
@@ -47,14 +62,20 @@
     <div id="qr-state">
       <span class="ticket-eyebrow">Scan to pay · Table <span id="ticket-table"></span></span>
       <p class="ticket-amount" id="checkout-amount">฿0</p>
-      <div class="qr-frame">
+      <p id="static-qr-hint" class="static-qr-hint hidden">
+        This QR has no amount — the customer types <strong id="static-qr-amount">฿0</strong> in their banking app.
+      </p>
+      <div id="qr-frame" class="qr-frame">
         <img id="qr-image" class="qr-image" alt="PromptPay QR code">
       </div>
       <p class="countdown-row">Expires in <span id="countdown" class="countdown-mono">--:--</span></p>
       <div class="ticket-actions">
+        <button type="button" id="slip-primary-btn" class="btn btn-primary js-upload-slip hidden">Customer paid — capture slip</button>
         <button id="recheck-btn" class="btn btn-secondary">Check now</button>
         <button id="cancel-btn" class="btn btn-ghost">Cancel order</button>
       </div>
+      <p id="slip-hint-gateway" class="slip-hint">QR not confirming? Record the customer's slip:</p>
+      <button type="button" id="slip-linky" class="btn-linky js-upload-slip">Customer paid — upload slip</button>
     </div>
 
     <div id="paid-state" class="result-state hidden">
@@ -67,6 +88,8 @@
       <div class="result-icon neutral">&times;</div>
       <h2>Order expired</h2>
       <button id="retry-btn" class="btn btn-primary">New order</button>
+      <p class="slip-hint">Customer actually paid? Record their slip:</p>
+      <button type="button" class="btn-linky js-upload-slip">Upload slip</button>
     </div>
 
     <div id="cancelled-state" class="result-state hidden">
@@ -74,6 +97,33 @@
       <h2>Order cancelled</h2>
       <button id="new-order-btn" class="btn btn-primary">New order</button>
     </div>
+
+    <div id="slip-camera-wrap" class="slip-camera-wrap hidden">
+      <span class="ticket-eyebrow">Point at the slip</span>
+      <video id="slip-video" class="slip-video" playsinline autoplay muted></video>
+      <div class="ticket-actions">
+        <button id="slip-capture-btn" class="btn btn-primary">Capture</button>
+        <button id="slip-camera-cancel-btn" class="btn btn-ghost">Cancel</button>
+      </div>
+    </div>
+
+    <div id="slip-preview-wrap" class="slip-preview-wrap hidden">
+      <span class="ticket-eyebrow">Confirm this slip</span>
+      <img id="slip-preview" class="slip-preview" alt="Payment slip preview">
+      <div class="ticket-actions">
+        <button id="slip-confirm-btn" class="btn btn-primary">Confirm payment</button>
+        <button id="slip-retake-btn" class="btn btn-secondary hidden">Retake</button>
+        <button id="slip-cancel-btn" class="btn btn-ghost">Cancel</button>
+      </div>
+    </div>
+
+    <div id="slip-state" class="result-state hidden">
+      <div class="result-icon success">&#10003;</div>
+      <h2>Slip recorded</h2>
+      <p id="slip-amount"></p>
+    </div>
+
+    <input id="slip-input" type="file" accept="image/*" capture="environment" class="hidden">
   </div>
 </main>
 

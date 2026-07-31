@@ -1,9 +1,12 @@
 # Staff Operator POS
 
 A single-device web POS for a one-day pop-up bar. Staff take drink orders (Beer &
-Regency), the app generates a GBPrimePay PromptPay QR for the exact total, payment
-is confirmed automatically (no e-slip photos), and every paid order is logged to a
-Google Sheet for accounting.
+Regency), the app shows a PromptPay QR for the total, staff confirm the payment,
+and every paid order is logged to a Google Sheet for accounting.
+
+Two payment modes (see [Payment modes](#payment-modes)): a **static** real
+PromptPay QR confirmed by photographing the customer's slip, or a **GBPrimePay**
+per-order QR that confirms itself automatically.
 
 - **Frontend:** plain HTML/CSS/JS served by the app (no build step)
 - **Backend:** Node.js + Express
@@ -13,7 +16,75 @@ Google Sheet for accounting.
 
 ---
 
-## How payment confirmation works
+## Payment modes
+
+Set by `PAYMENT_MODE` in `.env`.
+
+| Mode | QR shown | Amount | Confirmation |
+|---|---|---|---|
+| `static_qr` | The fixed real PromptPay QR at `public/images/promptpay-qr.jpg` | **Not encoded** — the customer types it | Slip photo only |
+| `gateway` | Per-order QR from GBPrimePay `/v3/qrcode` | Encoded exactly | Automatic (webhook + polling), slip as fallback |
+
+### `static_qr` (no GBPrimePay account needed)
+
+A static PromptPay QR is one printed image of a bank account. It carries no
+amount and no per-order reference, so **the gateway has nothing to poll and no
+webhook will ever fire**. That changes the operating procedure:
+
+- The checkout screen calls out the amount the customer must type themselves.
+- **"Customer paid — capture slip" is the primary action** — staff photograph
+  the customer's transfer slip with the tablet camera and confirm.
+- The "Check now" button is hidden, and `POST /:id/recheck` refuses with 409.
+- Nothing marks an order paid on its own. An unattended order simply expires
+  (the slip capture still works after expiry, from the expired screen).
+- The accounting row lands with status `paid (slip)` and a link to the photo.
+
+The QR image is served from `public/images/`; swap in a different account by
+replacing that file or pointing `STATIC_QR_IMAGE` elsewhere.
+
+This mode is independent of `DEMO_MODE` — leaving `DEMO_MODE=true` shows the
+real QR and stores slips locally while still skipping Google Sheets, which is
+the right setup until the accounting sheet exists.
+
+## Guest seating list
+
+Staff need to know **who paid for a table**, but they don't pick a guest in the
+app — it would slow every order down. Instead the app records the whole table's
+guest list with the order, and the payer is identified afterwards by matching
+the transfer slip against those names.
+
+The event's seating spreadsheet is the source of truth:
+
+```bash
+node scripts/import-guests.js [path/to/seating.xlsx]
+```
+
+Defaults to `รายชื่อผู้เข้าร่วมนั่งแต่ละโต๊ะ_จัดกลุ่ม.xlsx` in the project root,
+and expects columns `โต๊ะ | ชื่อ | กลุ่ม/รุ่น | ประเภท` (table, name, group/class,
+ticket type). It writes **`data/guests.json`**, which is committed — so a fresh
+deploy keeps the guest list even though `orders.sqlite` is rebuilt empty. The
+importer uses only Node's stdlib (no spreadsheet dependency), so it can't break
+the app on event day. Re-run it whenever the seating file changes.
+
+What that buys you:
+
+- **The table grid is built from the seating data** — exactly the tables that
+  have guests, each labelled with the group sitting there (`12` / `PE16`). About
+  half the tables seat more than one group; those show a `+` after the dominant
+  one. `TABLE_COUNT` is now only a fallback for when nothing has been imported.
+- **Every order stores a snapshot** of that table's guests (`guests_json` on the
+  `orders` row). A snapshot, not a live join, so re-importing an updated seating
+  file never rewrites the history of orders already taken.
+- **The accounting sheet gets `Table Group` and `Guests at table` columns**,
+  the latter right beside the slip link.
+
+Guest data is also queryable directly:
+
+```sql
+sqlite3 orders.sqlite "SELECT name, group_name, guest_type FROM guests WHERE table_no='17';"
+```
+
+## How payment confirmation works (`gateway` mode)
 
 An order flips from `pending_payment` → `paid` the moment GBPrimePay confirms it,
 via **three** independent paths so it never gets stuck:
@@ -42,14 +113,28 @@ double-logged.
 
 ### 2. Google Sheets logging
 - In Google Cloud Console: create a project, **enable the Google Sheets API**.
+- **Enable the Google Sheets API** for the project (APIs & Services → Library).
 - Create a **service account**, create a **JSON key**, download it.
 - Create the target spreadsheet. **Share it** (Editor) with the service account's
   email (looks like `name@project.iam.gserviceaccount.com`).
 - Note the spreadsheet ID from its URL:
   `https://docs.google.com/spreadsheets/d/`**`THIS_PART`**`/edit`.
 - No need to add a header row — the app writes one automatically on the first
-  paid order (`Timestamp | Order ID | Items | Total (THB) | GBPrimePay Ref | Status`)
-  and won't duplicate it if one already exists.
+  paid order and won't duplicate it if one already exists. Columns (A:M):
+
+  `Timestamp | Order ID | Table | Table Group | Items | Subtotal (THB) | Discount (THB) | Coupon | Total (THB) | Reference | Status | Slip | Guests at table`
+
+  **Slip** and **Guests at table** sit next to each other on purpose: that pair
+  is how staff work out which guest paid (see [Guest seating list](#guest-seating-list)).
+- Verify the whole connection with:
+
+  ```bash
+  node scripts/check-sheets.js           # check auth, API, sheet, tab
+  node scripts/check-sheets.js --write   # also append a real test row
+  ```
+
+  It checks each step in order and prints the specific fix for whatever fails
+  (API not enabled, sheet not shared, wrong ID, viewer instead of editor).
 
 ### 3. A server + domain
 - A Linux server (VPS) with Docker + Docker Compose installed.
@@ -70,14 +155,17 @@ cp .env.example .env
 | Variable | What to put |
 |---|---|
 | `DOMAIN` | Your domain, e.g. `pos.yourdomain.com` (no `https://`) |
-| `PUBLIC_BASE_URL` | `https://` + your domain — the URL you give GBPrimePay |
-| `GBPRIMEPAY_ENV` | `sandbox` for testing, `production` for the event |
+| `PUBLIC_BASE_URL` | `https://` + your domain — the URL you give GBPrimePay, and the base for slip links in the Sheet |
+| `PAYMENT_MODE` | `static_qr` (fixed real PromptPay QR + slip) or `gateway` (GBPrimePay) |
+| `STATIC_QR_IMAGE` | Path to the QR image, default `/images/promptpay-qr.jpg` (`static_qr` only) |
+| `GBPRIMEPAY_ENV` | `sandbox` for testing, `production` for the event (`gateway` only) |
 | `GBPRIMEPAY_TOKEN` / `GBPRIMEPAY_PUBLIC_KEY` / `GBPRIMEPAY_SECRET_KEY` | From your GBPrimePay dashboard |
 | `ORDER_EXPIRY_MINUTES` | How long an unpaid QR stays valid (default `5`) |
 | `PRICE_BEER` / `PRICE_REGENCY` | Prices in THB |
 | `GOOGLE_SERVICE_ACCOUNT_KEY_FILE` | Leave as `/app/service-account.json` for Docker |
 | `GOOGLE_SHEET_ID` | The spreadsheet ID from step 2 |
-| `GOOGLE_SHEET_RANGE` | Default `Sheet1!A:F` |
+| `GOOGLE_SHEET_RANGE` | Default `Sheet1!A:M` |
+| `TABLE_COUNT` | Fallback only — the grid comes from the imported seating list |
 
 Then put your Google key file next to `docker-compose.yml`:
 

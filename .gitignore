@@ -1,5 +1,14 @@
 node_modules/
 .env
 service-account.json
+
+# SQLite database and its write-ahead-log siblings. The -wal/-shm files churn on
+# every run and hold no durable state (SQLite checkpoints them into the .sqlite
+# on a clean close), so tracking them just produces noisy diffs.
 *.sqlite
 *.sqlite-journal
+*.sqlite-wal
+*.sqlite-shm
+
+# Payment-slip photos captured at the till — customer bank slips, never commit.
+slips/

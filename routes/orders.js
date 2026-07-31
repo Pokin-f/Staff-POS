@@ -4,8 +4,13 @@ const express = require('express');
 const store = require('../data/store');
 const menu = require('../config/menu');
 const tables = require('../config/tables');
+const coupons = require('../config/coupons');
 const gbprimepay = require('../services/gbprimepay');
-const { confirmOrderPaid } = require('../services/paymentConfirmation');
+const slipStore = require('../services/slipStore');
+const { confirmOrderPaid, confirmOrderBySlip } = require('../services/paymentConfirmation');
+const { isStaticQrMode, staticQrImage } = require('../config/mode');
+
+const MAX_SLIP_BYTES = 5 * 1024 * 1024;
 
 const router = express.Router();
 
@@ -53,10 +58,17 @@ function publicOrderView(order) {
     id: order.id,
     table: order.table,
     items: order.items,
+    subtotal: order.subtotal,
+    discount: order.discount,
+    coupon: order.coupon,
     total: order.total,
     status: order.status,
     qrImage: order.qrImage,
-    expiresAt: order.expiresAt
+    expiresAt: order.expiresAt,
+    // Tells the checkout screen which payment model it's rendering. With
+    // 'static_qr' there is no gateway confirmation, so the UI promotes slip
+    // capture and drops the "Check now" button.
+    paymentMode: isStaticQrMode() ? 'static_qr' : 'gateway'
   };
 }
 
@@ -68,34 +80,91 @@ router.get('/tables', (req, res) => {
   res.json(tables.getTables());
 });
 
+// Pre-checkout coupon check for the order page. Soft only — does NOT reserve
+// the code (that happens authoritatively at order creation). Returns the
+// discount for the current basket so the UI can preview the new total.
+router.post('/validate-coupon', (req, res) => {
+  let subtotal;
+  try {
+    ({ total: subtotal } = buildOrderLines(req.body.items));
+  } catch (err) {
+    return res.status(400).json({ error: err.message });
+  }
+
+  const coupon = coupons.getCoupon(req.body.code);
+  if (!coupon) {
+    return res.json({ valid: false, reason: 'Invalid coupon code' });
+  }
+  if (store.isCouponClaimed(coupon.code)) {
+    return res.json({ valid: false, reason: 'Coupon already used' });
+  }
+
+  const discount = coupons.computeDiscount(coupon, subtotal);
+  res.json({ valid: true, code: coupon.code, type: coupon.type, value: coupon.value, discount });
+});
+
 router.post('/', async (req, res) => {
-  let lines, total, table;
+  let lines, subtotal, table, coupon = null;
   try {
     table = normalizeTable(req.body.table);
-    ({ lines, total } = buildOrderLines(req.body.items));
+    ({ lines, total: subtotal } = buildOrderLines(req.body.items));
+    if (req.body.couponCode) {
+      coupon = coupons.getCoupon(req.body.couponCode);
+      if (!coupon) throw new Error('Invalid coupon code');
+    }
   } catch (err) {
     return res.status(400).json({ error: err.message });
   }
 
   const id = generateOrderId();
+
+  // Reserve the single-use code up front (atomic). Released below if the QR
+  // fails, or on cancel/expire; finalized once the order is paid.
+  let discount = 0;
+  if (coupon) {
+    if (!store.reserveCoupon(coupon.code, id)) {
+      return res.status(409).json({ error: 'Coupon already used' });
+    }
+    discount = coupons.computeDiscount(coupon, subtotal);
+  }
+  const total = subtotal - discount;
+
   const referenceNo = id;
   const expiryMinutes = Number(process.env.ORDER_EXPIRY_MINUTES || 5);
   const expiresAt = Date.now() + expiryMinutes * 60_000;
   const backgroundUrl = `${process.env.PUBLIC_BASE_URL}/api/webhooks/gbprimepay`;
 
+  // Static QR: one fixed image for every order, so there's no gateway call to
+  // make and no way for checkout to fail on the payment side.
   let qrImage;
-  try {
-    qrImage = await gbprimepay.createQrCharge({
-      referenceNo,
-      amount: total,
-      detail: lines.map((l) => `${l.name} x${l.qty}`).join(', '),
-      backgroundUrl
-    });
-  } catch (err) {
-    return res.status(502).json({ error: `Could not create payment QR: ${err.message}` });
+  if (isStaticQrMode()) {
+    qrImage = staticQrImage();
+  } else {
+    try {
+      qrImage = await gbprimepay.createQrCharge({
+        referenceNo,
+        amount: total,
+        detail: lines.map((l) => `${l.name} x${l.qty}`).join(', '),
+        backgroundUrl
+      });
+    } catch (err) {
+      if (coupon) store.releaseCoupon(id);
+      return res.status(502).json({ error: `Could not create payment QR: ${err.message}` });
+    }
   }
 
-  const order = store.createOrder({ id, referenceNo, table, items: lines, total, expiresAt, qrImage });
+  const order = store.createOrder({
+    id,
+    referenceNo,
+    table,
+    items: lines,
+    subtotal,
+    discount,
+    couponCode: coupon ? coupon.code : null,
+    total,
+    expiresAt,
+    qrImage
+  });
   res.status(201).json(publicOrderView(order));
 });
 
@@ -111,7 +180,9 @@ router.get('/:id', async (req, res) => {
   // Poll-driven confirmation: don't rely on the webhook alone. If the order is
   // still pending, opportunistically ask GBPrimePay (throttled). This makes
   // "Paid" appear automatically even if the webhook is delayed or never fires.
-  if (order.status === 'pending_payment') {
+  // Skipped for the static QR, which has no gateway transaction to ask about —
+  // the frontend still polls this route to pick up expiry/cancellation.
+  if (order.status === 'pending_payment' && !isStaticQrMode()) {
     const last = lastPollCheck.get(order.id) || 0;
     if (Date.now() - last >= POLL_CHECK_INTERVAL_MS) {
       lastPollCheck.set(order.id, Date.now());
@@ -144,6 +215,12 @@ router.post('/:id/recheck', async (req, res) => {
   const order = store.getOrder(req.params.id);
   if (!order) return res.status(404).json({ error: 'Order not found' });
 
+  // Nothing to re-check against a static QR (the UI hides the button, but the
+  // route must not pretend otherwise if it's called anyway).
+  if (isStaticQrMode()) {
+    return res.status(409).json({ error: 'Static QR mode: payment is confirmed from the slip photo, not the gateway' });
+  }
+
   if (order.status === 'pending_payment') {
     try {
       const result = await gbprimepay.checkStatus(order.referenceNo);
@@ -153,6 +230,37 @@ router.post('/:id/recheck', async (req, res) => {
     } catch (err) {
       return res.status(502).json({ error: `Could not check payment status: ${err.message}` });
     }
+  }
+
+  res.json(publicOrderView(store.getOrder(order.id)));
+});
+
+// Slip fallback: staff uploads a photo of the customer's transfer slip when the
+// gateway hasn't confirmed in time. Accepts a base64 data URL, saves the image
+// locally, marks the order paid-by-slip, and logs it (with the slip link) to
+// the sheet. Allowed while pending OR after it expired.
+router.post('/:id/slip', async (req, res) => {
+  const order = store.getOrder(req.params.id);
+  if (!order) return res.status(404).json({ error: 'Order not found' });
+  if (!['pending_payment', 'expired'].includes(order.status)) {
+    return res.status(409).json({ error: `Order is already ${order.status}` });
+  }
+
+  const match = /^data:image\/(png|jpe?g|webp);base64,(.+)$/.exec(req.body.image || '');
+  if (!match) {
+    return res.status(400).json({ error: 'Invalid image' });
+  }
+  const mime = match[1] === 'jpeg' ? 'jpg' : match[1];
+  const buffer = Buffer.from(match[2], 'base64');
+  if (buffer.length === 0 || buffer.length > MAX_SLIP_BYTES) {
+    return res.status(413).json({ error: 'Image too large or empty' });
+  }
+
+  try {
+    const filename = slipStore.saveSlip(order.id, buffer, mime);
+    await confirmOrderBySlip(order.id, filename);
+  } catch (err) {
+    return res.status(500).json({ error: `Could not record slip: ${err.message}` });
   }
 
   res.json(publicOrderView(store.getOrder(order.id)));

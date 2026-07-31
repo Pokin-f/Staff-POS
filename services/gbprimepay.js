@@ -17,6 +17,8 @@
 // resultCode/status field names below are GBPrimePay's general convention,
 // not confirmed for this specific endpoint.
 
+const { isDemoMode } = require('../config/mode');
+
 const ENV_URLS = {
   sandbox: 'https://api.globalprimepay.com',
   production: 'https://api.gbprimepay.com'
@@ -27,7 +29,51 @@ function baseUrl() {
   return ENV_URLS[env];
 }
 
+// A self-contained SVG "QR" placeholder (finder squares + pseudo-random
+// modules + a DEMO badge) so the checkout screen renders without a real
+// gateway. Deterministic, no dependencies, embeds as a data URL like the real
+// PNG does.
+function demoQrImage() {
+  const M = 10;
+  const N = 21;
+  const pad = 12;
+  const size = N * M + pad * 2;
+  const rects = [];
+  const black = '#0B0D0F';
+  function finder(cx, cy) {
+    rects.push(`<rect x="${pad + cx * M}" y="${pad + cy * M}" width="${7 * M}" height="${7 * M}" fill="${black}"/>`);
+    rects.push(`<rect x="${pad + (cx + 1) * M}" y="${pad + (cy + 1) * M}" width="${5 * M}" height="${5 * M}" fill="#fff"/>`);
+    rects.push(`<rect x="${pad + (cx + 2) * M}" y="${pad + (cy + 2) * M}" width="${3 * M}" height="${3 * M}" fill="${black}"/>`);
+  }
+  finder(0, 0);
+  finder(N - 7, 0);
+  finder(0, N - 7);
+  let seed = 7;
+  for (let y = 0; y < N; y++) {
+    for (let x = 0; x < N; x++) {
+      if ((x < 8 && y < 8) || (x > N - 8 && y < 8) || (x < 8 && y > N - 8)) continue;
+      seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+      if ((seed >> 8) & 1) {
+        rects.push(`<rect x="${pad + x * M}" y="${pad + y * M}" width="${M}" height="${M}" fill="${black}"/>`);
+      }
+    }
+  }
+  const cx = size / 2;
+  const cy = size / 2;
+  const svg =
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}">` +
+    `<rect width="${size}" height="${size}" fill="#fff"/>${rects.join('')}` +
+    `<rect x="${cx - 38}" y="${cy - 14}" width="76" height="28" rx="6" fill="#E2542E"/>` +
+    `<text x="${cx}" y="${cy + 5}" font-family="monospace" font-size="15" font-weight="bold" fill="#fff" text-anchor="middle">DEMO</text>` +
+    `</svg>`;
+  return `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`;
+}
+
 async function createQrCharge({ referenceNo, amount, detail, backgroundUrl }) {
+  if (isDemoMode()) {
+    return demoQrImage();
+  }
+
   const token = process.env.GBPRIMEPAY_TOKEN;
   if (!token) {
     throw new Error('GBPRIMEPAY_TOKEN is not set');
@@ -59,6 +105,11 @@ async function createQrCharge({ referenceNo, amount, detail, backgroundUrl }) {
 }
 
 async function checkStatus(referenceNo) {
+  if (isDemoMode()) {
+    // Never auto-confirms in demo — the point is to exercise the slip fallback.
+    return { raw: { demo: true }, paid: false };
+  }
+
   const secretKey = process.env.GBPRIMEPAY_SECRET_KEY;
   if (!secretKey) {
     throw new Error('GBPRIMEPAY_SECRET_KEY is not set');

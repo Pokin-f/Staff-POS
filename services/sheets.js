@@ -1,7 +1,32 @@
 const path = require('path');
 const { google } = require('googleapis');
+const { isDemoMode } = require('../config/mode');
 
-const HEADER = ['Timestamp', 'Order ID', 'Table', 'Items', 'Total (THB)', 'GBPrimePay Ref', 'Status'];
+const HEADER = [
+  'Timestamp', 'Order ID', 'Table', 'Table Group', 'Items',
+  'Subtotal (THB)', 'Discount (THB)', 'Coupon',
+  'Total (THB)', 'Reference', 'Status', 'Slip', 'Guests at table'
+];
+
+// Column letter of the last header field — the header is written to A1:<LAST>1.
+const LAST_COLUMN = String.fromCharCode('A'.charCodeAt(0) + HEADER.length - 1);
+
+// Who was seated at the table when the order was placed. Staff read this next
+// to the slip photo to work out which guest actually paid.
+function guestList(order) {
+  if (!Array.isArray(order.guests) || order.guests.length === 0) return '';
+  return order.guests.map((g) => g.name).join(', ');
+}
+
+function statusLabel(status) {
+  return status === 'paid_slip' ? 'paid (slip)' : 'paid';
+}
+
+function slipUrl(order) {
+  if (!order.slipPath) return '';
+  const base = (process.env.PUBLIC_BASE_URL || '').replace(/\/+$/, '');
+  return `${base}/slips/${order.slipPath}`;
+}
 
 let sheetsClientPromise = null;
 let headerEnsured = false;
@@ -29,11 +54,11 @@ function sheetNameFromRange(range) {
 }
 
 // Writes the header row once, only if row 1 is empty. Uses `update` on the
-// fixed A1:F1 range (not append), so it's idempotent and never produces a
+// fixed A1:<last>1 range (not append), so it's idempotent and never produces a
 // duplicate header even if two payments land at the same time.
 async function ensureHeaderRow(sheets, spreadsheetId, range) {
   if (headerEnsured) return;
-  const headerRange = `${sheetNameFromRange(range)}!A1:G1`;
+  const headerRange = `${sheetNameFromRange(range)}!A1:${LAST_COLUMN}1`;
   const res = await sheets.spreadsheets.values.get({ spreadsheetId, range: headerRange });
   const firstRow = res.data.values && res.data.values[0];
   if (!firstRow || firstRow.length === 0) {
@@ -48,12 +73,25 @@ async function ensureHeaderRow(sheets, spreadsheetId, range) {
 }
 
 async function appendPaidOrderRow(order) {
+  if (isDemoMode()) {
+    // No Google creds needed in demo — just show what WOULD be logged.
+    console.log(
+      `[demo] would log to Sheet: order=${order.id} table=${order.table || '-'} ` +
+      `items="${summarizeItems(order.items)}" subtotal=${order.subtotal} ` +
+      `discount=${order.discount || 0} coupon=${order.coupon || '-'} total=${order.total} ` +
+      `status=${statusLabel(order.status)} slip=${slipUrl(order) || '-'} ` +
+      `group=${order.tableGroup || '-'} guests="${guestList(order) || '-'}"`
+    );
+    return;
+  }
+
   const spreadsheetId = process.env.GOOGLE_SHEET_ID;
-  const range = process.env.GOOGLE_SHEET_RANGE || 'Sheet1!A:G';
+  const range = process.env.GOOGLE_SHEET_RANGE || `Sheet1!A:${LAST_COLUMN}`;
   if (!spreadsheetId) {
     throw new Error('GOOGLE_SHEET_ID is not set');
   }
 
+  const subtotal = order.subtotal != null ? order.subtotal : order.total;
   const sheets = await getSheetsClient();
   await ensureHeaderRow(sheets, spreadsheetId, range);
   await sheets.spreadsheets.values.append({
@@ -65,10 +103,16 @@ async function appendPaidOrderRow(order) {
         new Date(order.paidAt || Date.now()).toISOString(),
         order.id,
         order.table || '',
+        order.tableGroup || '',
         summarizeItems(order.items),
+        subtotal,
+        order.discount || 0,
+        order.coupon || '',
         order.total,
         order.referenceNo,
-        'paid'
+        statusLabel(order.status),
+        slipUrl(order),
+        guestList(order)
       ]]
     }
   });

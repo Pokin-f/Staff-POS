@@ -109,6 +109,33 @@ img:focus-visible {
   font-size: clamp(16px, 3.4vw, 24px);
   cursor: pointer;
   transition: background 0.12s ease, border-color 0.12s ease, transform 0.08s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  padding: 2px;
+  overflow: hidden;
+}
+.table-btn-no {
+  line-height: 1.05;
+}
+/* The group label is a finding aid, not the identity of the table — kept
+   quiet so the number still reads at a glance from across the room. */
+.table-btn-group {
+  font-family: var(--font-mono);
+  font-size: clamp(7px, 1.35vw, 10px);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  line-height: 1.1;
+  color: var(--muted);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.table-btn:active .table-btn-group {
+  color: rgba(11, 13, 15, 0.7);
 }
 .table-btn:hover {
   border-color: var(--brass);
@@ -318,6 +345,69 @@ img:focus-visible {
 .btn-primary { background: var(--ember); color: var(--paper); }
 .btn-secondary { background: var(--surface-2); color: var(--paper); border: 1px solid rgba(199, 165, 66, 0.35); }
 .btn-ghost { background: transparent; color: var(--muted); }
+.btn-small { padding: 11px 16px; font-size: 14px; }
+
+/* ---------- Coupon (order page) ---------- */
+
+.order-footer {
+  position: sticky;
+  bottom: 0;
+  margin-top: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.coupon-entry {
+  display: flex;
+  gap: 10px;
+}
+.coupon-input {
+  flex: 1;
+  min-width: 0;
+  border-radius: 12px;
+  border: 1px solid rgba(199, 165, 66, 0.3);
+  background: var(--surface);
+  color: var(--paper);
+  font-family: var(--font-mono);
+  font-size: 15px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 13px 16px;
+}
+.coupon-input::placeholder {
+  color: var(--muted);
+  letter-spacing: normal;
+  text-transform: none;
+}
+.coupon-applied {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: color-mix(in srgb, var(--chang-green) 14%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--chang-green) 45%, transparent);
+  border-radius: 12px;
+  padding: 12px 16px;
+}
+.coupon-applied-text {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  color: var(--paper);
+}
+.basket-discount-note {
+  display: block;
+  margin-top: 2px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--chang-green);
+}
+
+/* The order footer replaces the standalone sticky on .basket-bar. */
+.order-footer .basket-bar {
+  position: static;
+  margin-top: 0;
+}
 
 /* ---------- Checkout / ticket screen ---------- */
 
@@ -360,6 +450,29 @@ img:focus-visible {
   width: 220px;
   height: 220px;
   display: block;
+}
+/* The real PromptPay QR is a tall bank-issued image (bank header, QR, payee
+   name), not a bare square — let it keep its own aspect ratio. */
+.qr-frame.static .qr-image {
+  /* Widest that still fits the ticket's inner width — the bank-issued image
+     spends a lot of height on its header/footer, so the QR itself only gets
+     ~60% of this, and it has to stay comfortably scannable across the table. */
+  width: 300px;
+  max-width: 100%;
+  height: auto;
+}
+/* A static QR has no amount encoded, so the amount the customer must type is
+   the single most important thing on this screen after the QR itself. */
+.static-qr-hint {
+  margin: -8px 0 18px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--muted-on-paper);
+}
+.static-qr-hint strong {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  color: var(--ember);
 }
 .countdown-row {
   margin: 18px 0 0;
@@ -408,3 +521,47 @@ img:focus-visible {
   font-weight: 600;
 }
 .result-state .btn { margin-top: 14px; }
+
+/* ---------- Slip fallback ---------- */
+
+.slip-hint {
+  margin: 22px 0 8px;
+  font-size: 13px;
+  color: var(--muted-on-paper);
+}
+/* A link-style button that reads on the light ticket. */
+.ticket .btn-linky {
+  border: none;
+  background: transparent;
+  color: var(--ember);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+  padding: 4px 2px;
+}
+.slip-camera-wrap,
+.slip-preview-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+.slip-video {
+  width: 100%;
+  max-height: 340px;
+  border-radius: 10px;
+  background: #000;
+  object-fit: cover;
+}
+.slip-preview {
+  max-width: 100%;
+  max-height: 320px;
+  border-radius: 10px;
+  border: 1px solid rgba(11, 13, 15, 0.15);
+}
+.slip-preview-wrap .ticket-actions {
+  width: 100%;
+}
