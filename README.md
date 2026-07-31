@@ -125,8 +125,9 @@ double-logged.
   `Timestamp | Order ID | Table | Table Group | Beer | Regency | Subtotal (THB) | Discount (THB) | Coupon | Total (THB) | Reference | Status | Slip | Guests at table`
 
   One quantity column per menu item (from `config/menu.js`), so accounting can
-  sum/filter per drink instead of parsing a combined string. Slip is an
-  `=IMAGE(...)` formula that renders the photo inline, not a plain link.
+  sum/filter per drink instead of parsing a combined string. Slip is a
+  `=HYPERLINK(url, IMAGE(url))` formula — shows a thumbnail inline and opens
+  the full photo in a new tab when clicked.
 
   **Slip** and **Guests at table** sit next to each other on purpose: that pair
   is how staff work out which guest paid (see [Guest seating list](#guest-seating-list)).

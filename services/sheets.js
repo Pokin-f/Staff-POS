@@ -32,11 +32,11 @@ function slipUrl(order) {
   return `${base}/slips/${order.slipPath}`;
 }
 
-// Renders as a thumbnail inline in the cell (mode 1 = fit cell, keep aspect
-// ratio) instead of a plain link nobody wants to click during a rush.
+// Thumbnail inline in the cell, wrapped in HYPERLINK so clicking it opens the
+// full photo in a new tab instead of just selecting the cell.
 function slipCell(order) {
   const url = slipUrl(order);
-  return url ? `=IMAGE("${url}")` : '';
+  return url ? `=HYPERLINK("${url}", IMAGE("${url}"))` : '';
 }
 
 // Total quantity of one menu item across an order's line items.

@@ -116,7 +116,7 @@ names. Key points:
   (currently `A:N`).
 - **Slips** are written next to the DB (`dirname(DB_PATH)/slips`, a Docker volume)
   and served read-only at `/slips`. The Sheet renders the slip as an inline
-  `=IMAGE(...)` formula built from a `PUBLIC_BASE_URL/slips/...`
+  `=HYPERLINK(...)`-wrapped `=IMAGE(...)` formula built from a `PUBLIC_BASE_URL/slips/...`
   URL, so `PUBLIC_BASE_URL` must be correct or the thumbnail fails to load.
 - **Camera capture** (`public/app.js`) needs a secure context. It uses
   `getUserMedia` on HTTPS/localhost and silently falls back to the native file
