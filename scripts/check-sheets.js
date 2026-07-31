@@ -19,7 +19,7 @@ const { google } = require('googleapis');
 
 const KEY_FILE = path.resolve(process.env.GOOGLE_SERVICE_ACCOUNT_KEY_FILE || './service-account.json');
 const SHEET_ID = process.env.GOOGLE_SHEET_ID;
-const RANGE = process.env.GOOGLE_SHEET_RANGE || 'Sheet1!A:M';
+const RANGE = process.env.GOOGLE_SHEET_RANGE || 'Sheet1!A:N';
 
 const ok = (m) => console.log(`  \x1b[32m✓\x1b[0m ${m}`);
 const bad = (m) => console.log(`  \x1b[31m✗\x1b[0m ${m}`);
@@ -148,7 +148,7 @@ async function main() {
         range: RANGE,
         valueInputOption: 'USER_ENTERED',
         requestBody: {
-          values: [[stamp, 'CONNECTION TEST', '—', '—', 'delete this row', 0, 0, '', 0, '—', 'test', '', '']]
+          values: [[stamp, 'CONNECTION TEST', '—', '—', 0, 0, 0, 0, '', 0, '—', 'test', '', '']]
         }
       });
     } catch (err) {

@@ -120,9 +120,13 @@ double-logged.
 - Note the spreadsheet ID from its URL:
   `https://docs.google.com/spreadsheets/d/`**`THIS_PART`**`/edit`.
 - No need to add a header row — the app writes one automatically on the first
-  paid order and won't duplicate it if one already exists. Columns (A:M):
+  paid order and won't duplicate it if one already exists. Columns (A:N):
 
-  `Timestamp | Order ID | Table | Table Group | Items | Subtotal (THB) | Discount (THB) | Coupon | Total (THB) | Reference | Status | Slip | Guests at table`
+  `Timestamp | Order ID | Table | Table Group | Beer | Regency | Subtotal (THB) | Discount (THB) | Coupon | Total (THB) | Reference | Status | Slip | Guests at table`
+
+  One quantity column per menu item (from `config/menu.js`), so accounting can
+  sum/filter per drink instead of parsing a combined string. Slip is an
+  `=IMAGE(...)` formula that renders the photo inline, not a plain link.
 
   **Slip** and **Guests at table** sit next to each other on purpose: that pair
   is how staff work out which guest paid (see [Guest seating list](#guest-seating-list)).
@@ -164,7 +168,7 @@ cp .env.example .env
 | `PRICE_BEER` / `PRICE_REGENCY` | Prices in THB |
 | `GOOGLE_SERVICE_ACCOUNT_KEY_FILE` | Leave as `/app/service-account.json` for Docker |
 | `GOOGLE_SHEET_ID` | The spreadsheet ID from step 2 |
-| `GOOGLE_SHEET_RANGE` | Default `Sheet1!A:M` |
+| `GOOGLE_SHEET_RANGE` | Default `Sheet1!A:N` |
 | `TABLE_COUNT` | Fallback only — the grid comes from the imported seating list |
 
 Then put your Google key file next to `docker-compose.yml`:

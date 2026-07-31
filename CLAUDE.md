@@ -110,11 +110,14 @@ names. Key points:
   (paid). Frontend `couponDiscount()` mirrors `computeDiscount()` for live preview
   only; the server always recomputes authoritatively.
 - **Sheet columns** are driven by the `HEADER` array in `services/sheets.js`, which
-  derives `LAST_COLUMN`. If you change it, update `GOOGLE_SHEET_RANGE` in `.env`
-  and `.env.example` to match (currently `A:M`).
+  derives `LAST_COLUMN`. It includes one quantity column per menu item (from
+  `config/menu.js`) rather than a combined "Beer x1, Regency x1" string. If you
+  change it, update `GOOGLE_SHEET_RANGE` in `.env` and `.env.example` to match
+  (currently `A:N`).
 - **Slips** are written next to the DB (`dirname(DB_PATH)/slips`, a Docker volume)
-  and served read-only at `/slips`. The Sheet stores a `PUBLIC_BASE_URL/slips/...`
-  link, so `PUBLIC_BASE_URL` must be correct or the links are dead.
+  and served read-only at `/slips`. The Sheet renders the slip as an inline
+  `=IMAGE(...)` formula built from a `PUBLIC_BASE_URL/slips/...`
+  URL, so `PUBLIC_BASE_URL` must be correct or the thumbnail fails to load.
 - **Camera capture** (`public/app.js`) needs a secure context. It uses
   `getUserMedia` on HTTPS/localhost and silently falls back to the native file
   picker (`<input capture>`) on plain-HTTP LAN. Both paths must keep working.

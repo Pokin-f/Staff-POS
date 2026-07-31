@@ -1,9 +1,13 @@
 const path = require('path');
 const { google } = require('googleapis');
 const { isDemoMode } = require('../config/mode');
+const { getMenu } = require('../config/menu');
 
+// One quantity column per menu item, so accounting can sum/filter per drink
+// instead of parsing a combined "Beer x1, Regency x1" string.
+const MENU = getMenu();
 const HEADER = [
-  'Timestamp', 'Order ID', 'Table', 'Table Group', 'Items',
+  'Timestamp', 'Order ID', 'Table', 'Table Group', ...MENU.map((m) => m.name),
   'Subtotal (THB)', 'Discount (THB)', 'Coupon',
   'Total (THB)', 'Reference', 'Status', 'Slip', 'Guests at table'
 ];
@@ -26,6 +30,20 @@ function slipUrl(order) {
   if (!order.slipPath) return '';
   const base = (process.env.PUBLIC_BASE_URL || '').replace(/\/+$/, '');
   return `${base}/slips/${order.slipPath}`;
+}
+
+// Renders as a thumbnail inline in the cell (mode 1 = fit cell, keep aspect
+// ratio) instead of a plain link nobody wants to click during a rush.
+function slipCell(order) {
+  const url = slipUrl(order);
+  return url ? `=IMAGE("${url}")` : '';
+}
+
+// Total quantity of one menu item across an order's line items.
+function qtyOf(items, itemId) {
+  return items
+    .filter((line) => line.id === itemId)
+    .reduce((sum, line) => sum + (line.qty || 0), 0);
 }
 
 let sheetsClientPromise = null;
@@ -104,14 +122,14 @@ async function appendPaidOrderRow(order) {
         order.id,
         order.table || '',
         order.tableGroup || '',
-        summarizeItems(order.items),
+        ...MENU.map((m) => qtyOf(order.items, m.id)),
         subtotal,
         order.discount || 0,
         order.coupon || '',
         order.total,
         order.referenceNo,
         statusLabel(order.status),
-        slipUrl(order),
+        slipCell(order),
         guestList(order)
       ]]
     }
