@@ -114,8 +114,9 @@ names. Key points:
   `config/menu.js`) rather than a combined "Beer x1, Regency x1" string. If you
   change it, update `GOOGLE_SHEET_RANGE` in `.env` and `.env.example` to match
   (currently `A:N`).
-- **Slips** are written next to the DB (`dirname(DB_PATH)/slips`, a Docker volume)
-  and served read-only at `/slips`. The Sheet renders the slip as an inline
+- **Slips** are written next to the DB (`dirname(DB_PATH)/slips`, bind-mounted
+  to `./runtime-data` on the host, see `docker-compose.yml`) and served
+  read-only at `/slips`. The Sheet renders the slip as an inline
   `=HYPERLINK(...)`-wrapped `=IMAGE(...)` formula built from a `PUBLIC_BASE_URL/slips/...`
   URL, so `PUBLIC_BASE_URL` must be correct or the thumbnail fails to load.
 - **Camera capture** (`public/app.js`) needs a secure context. It uses

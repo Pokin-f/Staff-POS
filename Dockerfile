@@ -19,7 +19,7 @@ WORKDIR /app
 COPY --from=builder /app .
 
 ENV NODE_ENV=production
-ENV DB_PATH=/app/data/orders.sqlite
+ENV DB_PATH=/app/runtime/orders.sqlite
 
 EXPOSE 3000
 

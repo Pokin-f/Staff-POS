@@ -5,9 +5,15 @@ services:
     env_file:
       - .env
     environment:
-      - DB_PATH=/app/data/orders.sqlite
+      - DB_PATH=/app/runtime/orders.sqlite
     volumes:
-      - pos-data:/app/data
+      # Bind mount (not a named volume) so orders.sqlite and the slip photos
+      # under it (dirname(DB_PATH)/slips) are plain files on the host —
+      # browsable with a SQLite viewer / file manager without `docker cp`.
+      # Deliberately NOT /app/data: that path also holds store.js/expiry.js
+      # baked into the image, and a bind mount would shadow them with an
+      # empty host folder and crash the app.
+      - ./runtime-data:/app/runtime
       - ./service-account.json:/app/service-account.json:ro
     expose:
       - "3000"
@@ -32,6 +38,5 @@ services:
       - pos
 
 volumes:
-  pos-data:
   caddy-data:
   caddy-config:
