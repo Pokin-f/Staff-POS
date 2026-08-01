@@ -7,7 +7,7 @@ const { getMenu } = require('../config/menu');
 // instead of parsing a combined "Beer x1, Regency x1" string.
 const MENU = getMenu();
 const HEADER = [
-  'Timestamp', 'Order ID', 'Table', 'Table Group', 'Collected By', 'Staff', ...MENU.map((m) => m.name),
+  'Timestamp', 'Order ID', 'Table', 'Table Group', 'Collected By', 'Staff',...MENU.map((m) => m.name),
   'Subtotal (THB)', 'Discount (THB)', 'Coupon',
   'Total (THB)', 'Reference', 'Status', 'Slip', 'Guests at table'
 ];
