@@ -847,9 +847,15 @@
         const meta = document.createElement('p');
         meta.className = 'tray-order-meta';
         const waited = waitedLabel(order.paidAt);
-        meta.textContent = order.collectedBy
-          ? `${order.collectedBy} · ${waited} · ${money(order.total)}`
-          : `${waited} · ${money(order.total)}`;
+        if (order.collectedBy) {
+          const staff = document.createElement('span');
+          staff.className = 'tray-order-staff';
+          staff.textContent = order.collectedBy;
+          meta.appendChild(staff);
+          meta.appendChild(document.createTextNode(` · ${waited} · ${money(order.total)}`));
+        } else {
+          meta.textContent = `${waited} · ${money(order.total)}`;
+        }
         // Ten minutes on the tray means something went wrong on the floor.
         if (minutesSince(order.paidAt) >= 10) meta.classList.add('is-late');
 
@@ -860,7 +866,7 @@
         btn.type = 'button';
         btn.className = 'btn btn-primary tray-serve-btn';
         btn.dataset.id = order.id;
-        btn.textContent = 'Served';
+        btn.textContent = 'Ordered';
 
         li.appendChild(body);
         li.appendChild(btn);

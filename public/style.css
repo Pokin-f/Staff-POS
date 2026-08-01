@@ -212,6 +212,12 @@ img:focus-visible {
 .tray-order-meta.is-late {
   color: var(--ember);
 }
+.tray-order-staff {
+  font-family: var(--font-body);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--brass);
+}
 .tray-serve-btn {
   flex: none;
   padding: 12px 20px;
