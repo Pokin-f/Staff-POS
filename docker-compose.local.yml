@@ -1,0 +1,12 @@
+# Local-only overlay: publish the app straight to localhost:3000 and skip Caddy.
+# Caddy exists to terminate HTTPS for a real DOMAIN via Let's Encrypt, which
+# cannot work on a laptop — so for local testing we bypass it entirely.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.local.yml up -d pos
+#
+# Deliberately NOT named docker-compose.override.yml: that filename is picked up
+# automatically and would publish port 3000 on the event server too.
+services:
+  pos:
+    ports:
+      - "3000:3000"
