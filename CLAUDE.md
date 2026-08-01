@@ -132,6 +132,13 @@ names. Key points:
 - **Frontend** is one IIFE in `public/app.js`; screens and checkout states are
   toggled by `hidden` class via `showScreen()` / `showCheckoutState()`. No
   framework, no build.
+- **The paid screen is a hand-off docket**, not a receipt: table number, the
+  drinks to carry, and the table's guest names, for the server staff who
+  actually delivers the order. Both paid paths (`paid` and `slip`) render the
+  same element — what the server does is identical either way. It has **no
+  auto-reset**; the staff must tap "more drinks · same table" (back to the menu,
+  table and collector kept) or "done · next table". A timeout here would clear
+  the drinks list out from under the person carrying them.
 
 ## Verifying
 

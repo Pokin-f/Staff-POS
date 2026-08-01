@@ -19,11 +19,18 @@
   const expiredState = document.getElementById('expired-state');
   const cancelledState = document.getElementById('cancelled-state');
 
-  const slipState = document.getElementById('slip-state');
+  const paidHeadingEl = document.getElementById('paid-heading');
+  const ticketCard = document.querySelector('#checkout-screen .ticket');
+  const docketTableEl = document.getElementById('docket-table');
+  const docketGroupEl = document.getElementById('docket-group');
+  const docketItemsEl = document.getElementById('docket-items');
+  const docketGuestsWrap = document.getElementById('docket-guests-wrap');
+  const docketGuestsEl = document.getElementById('docket-guests');
+  const docketFooterEl = document.getElementById('docket-footer');
+
   const slipPreviewWrap = document.getElementById('slip-preview-wrap');
   const slipPreview = document.getElementById('slip-preview');
   const slipInput = document.getElementById('slip-input');
-  const slipAmountEl = document.getElementById('slip-amount');
   const slipCameraWrap = document.getElementById('slip-camera-wrap');
   const slipVideo = document.getElementById('slip-video');
   const slipRetakeBtn = document.getElementById('slip-retake-btn');
@@ -348,7 +355,6 @@
     paidState.classList.add('hidden');
     expiredState.classList.add('hidden');
     cancelledState.classList.add('hidden');
-    slipState.classList.add('hidden');
     slipPreviewWrap.classList.add('hidden');
     slipCameraWrap.classList.add('hidden');
   }
@@ -357,14 +363,80 @@
     stopSlipCamera();
     checkoutState = state;
     hideAllTicketSections();
+    // 'paid' and 'slip' are the same screen — the hand-off docket — because
+    // what the server has to do is identical however the payment was confirmed.
     ({
       qr: qrState,
       paid: paidState,
       expired: expiredState,
       cancelled: cancelledState,
-      slip: slipState
+      slip: paidState
     })[state].classList.remove('hidden');
+    // The docket is read by someone other than the operator, so give it room.
+    ticketCard.classList.toggle('is-docket', state === 'paid' || state === 'slip');
   }
+
+  // ---- Hand-off docket ----
+
+  // What the server staff needs to act on: the drinks to carry, the table to
+  // carry them to, and who is sitting there. Built from the order the server
+  // returned (not local state) so it reflects what was actually recorded.
+  function renderDocket(order) {
+    docketTableEl.textContent = order.table || selectedTable || '–';
+    // Same convention as the table grid: the dominant group, with a "+" when
+    // the table seats more than one. The full list is six codes wide on some
+    // tables and would bury the table number it sits next to.
+    const groups = (order.tableGroup || '').split(',').map((g) => g.trim()).filter(Boolean);
+    docketGroupEl.textContent = groups.length > 1 ? `${groups[0]} +` : (groups[0] || '');
+
+    docketItemsEl.innerHTML = '';
+    for (const line of order.items || []) {
+      const li = document.createElement('li');
+      li.className = 'docket-item';
+      li.innerHTML =
+        `<span class="docket-item-qty">${line.qty}&times;</span>` +
+        `<span class="docket-item-name"></span>`;
+      li.querySelector('.docket-item-name').textContent = line.name;
+      docketItemsEl.appendChild(li);
+    }
+
+    // Walk-ins have no seating snapshot — drop the block rather than show an
+    // empty label the server would have to puzzle over.
+    const guests = order.guests || [];
+    docketGuestsWrap.classList.toggle('hidden', guests.length === 0);
+    docketGuestsEl.textContent = guests.join(' · ');
+
+    const collector = order.collectedBy || selectedStaff || '';
+    docketFooterEl.textContent = collector
+      ? `Taken by ${collector} · ${money(order.total)} paid`
+      : `${money(order.total)} paid`;
+  }
+
+  // Success is a full stop, not a timeout: the drinks still have to be poured
+  // and carried. Both buttons keep the staff member; only the table differs.
+  function finishOrder() {
+    stopPolling();
+    stopCountdown();
+    stopSlipCamera();
+    for (const key of Object.keys(basket)) delete basket[key];
+    currentOrderId = null;
+    appliedCoupon = null;
+    slipDataUrl = null;
+    slipInput.value = '';
+    renderCoupon();
+    renderMenu();
+  }
+
+  document.getElementById('more-orders-btn').addEventListener('click', () => {
+    finishOrder();
+    showScreen('menu');
+  });
+
+  document.getElementById('another-table-btn').addEventListener('click', () => {
+    finishOrder();
+    selectedTable = null;
+    showScreen('table');
+  });
 
   function stopSlipCamera() {
     if (slipStream) {
@@ -426,9 +498,10 @@
     if (order.status === 'paid') {
       stopPolling();
       stopCountdown();
-      showCheckoutState('paid');
+      paidHeadingEl.textContent = 'Paid';
       paidAmountEl.textContent = `${money(order.total)} received`;
-      setTimeout(resetToMenu, 4000);
+      renderDocket(order);
+      showCheckoutState('paid');
     } else if (order.status === 'expired') {
       stopPolling();
       stopCountdown();
@@ -664,9 +737,10 @@
       stopPolling();
       stopCountdown();
       slipDataUrl = null;
-      slipAmountEl.textContent = `${money(order.total)} recorded from slip`;
+      paidHeadingEl.textContent = 'Slip recorded';
+      paidAmountEl.textContent = `${money(order.total)} recorded from slip`;
+      renderDocket(order);
       showCheckoutState('slip');
-      setTimeout(resetToMenu, 4000);
     } catch (err) {
       alert(err.message);
     } finally {

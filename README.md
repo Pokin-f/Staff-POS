@@ -103,6 +103,25 @@ the boot log. The last person to take an order stays highlighted on the picker,
 so a staff member working a run of orders confirms with one tap. The name is
 recorded on the order, not on the device, so two people can share a tablet.
 
+## The paid screen is a hand-off docket
+
+Once payment is confirmed the screen becomes an instruction for the **server
+staff** who carries the drinks out:
+
+- **Table number** (with the group code, as on the table grid)
+- **The drinks to pour** — `2× Beer`, `1× Regency`
+- **Guests at that table**, from the seating snapshot, so the server knows who
+  to look for
+- Who took the order, and the amount paid
+
+It stays on screen until someone taps — there is deliberately **no auto-reset**,
+because a timeout would clear the drinks list while they're still being poured.
+Two ways on:
+
+- **More drinks · same table** — back to the menu with the same table and the
+  same collector, basket empty.
+- **Done · next table** — back to the table grid, collector kept.
+
 ## How payment confirmation works (`gateway` mode)
 
 An order flips from `pending_payment` → `paid` the moment GBPrimePay confirms it,

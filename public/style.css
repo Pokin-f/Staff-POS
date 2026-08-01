@@ -581,6 +581,144 @@ img:focus-visible {
   font-weight: 600;
 }
 .result-state .btn { margin-top: 14px; }
+/* The docket's own buttons are already spaced by .ticket-actions. */
+.result-state .ticket-actions .btn { margin-top: 0; }
+
+/* ---------- Hand-off docket (paid screen) ---------- */
+
+/* Wider than the QR ticket: this one is read by a second person, often at
+   arm's length, and carries the whole order rather than a single number. */
+.ticket.is-docket {
+  max-width: 520px;
+}
+.docket {
+  margin-top: 20px;
+  padding: 18px 20px 16px;
+  text-align: left;
+  border: 1px dashed rgba(11, 13, 15, 0.28);
+  border-radius: 8px;
+  background: rgba(11, 13, 15, 0.03);
+}
+.docket-eyebrow {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ember);
+}
+.docket-label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted-on-paper);
+}
+.docket-table-row {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-top: 10px;
+}
+/* The one thing the server must not misread. */
+.docket-table-no {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 40px;
+  line-height: 1;
+  color: var(--ink);
+}
+.docket-group {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--muted-on-paper);
+}
+.docket-items {
+  list-style: none;
+  margin: 14px 0 0;
+  padding: 14px 0 0;
+  border-top: 1px solid rgba(11, 13, 15, 0.12);
+}
+.docket-item {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 5px 0;
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.docket-item-qty {
+  font-family: var(--font-mono);
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--ember);
+  min-width: 44px;
+}
+.docket-guests {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(11, 13, 15, 0.12);
+}
+/* Names wrap freely — a table can seat nine, and the server scans them rather
+   than reads them in order. */
+.docket-guest-names {
+  margin: 5px 0 0;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--ink);
+}
+.docket-footer {
+  margin: 14px 0 0;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  color: var(--muted-on-paper);
+}
+
+/* The docket has to fit a landscape tablet without scrolling — staff must be
+   able to tap "more drinks" without hunting below the fold. So on this state
+   drop the success badge (the heading already says it), drop the amount line
+   (the footer repeats it), and sit the two buttons side by side. */
+.ticket.is-docket {
+  padding: 24px 26px;
+}
+.ticket.is-docket .docket {
+  margin-top: 14px;
+}
+.ticket.is-docket .result-icon,
+.ticket.is-docket #paid-amount {
+  display: none;
+}
+.ticket.is-docket .ticket-actions {
+  flex-direction: row;
+  margin-top: 18px;
+}
+.ticket.is-docket .ticket-actions .btn {
+  flex: 1;
+}
+
+/* Landscape: drinks and names side by side rather than stacked. */
+@media (min-width: 820px) {
+  .ticket.is-docket {
+    max-width: 700px;
+  }
+  .docket {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    column-gap: 24px;
+  }
+  .docket-eyebrow,
+  .docket-table-row,
+  .docket-footer {
+    grid-column: 1 / -1;
+  }
+  .docket-guests {
+    margin-top: 14px;
+    padding-top: 14px;
+  }
+}
 
 /* ---------- Slip fallback ---------- */
 

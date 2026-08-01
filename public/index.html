@@ -93,10 +93,37 @@
       <button type="button" id="slip-linky" class="btn-linky js-upload-slip">Customer paid — upload slip</button>
     </div>
 
+    <!-- Hand-off docket. Both paid paths (gateway + slip) land here, and it
+         stays on screen until someone taps — the server staff read the drinks,
+         the table and the names off it before the next order starts. -->
     <div id="paid-state" class="result-state hidden">
       <div class="result-icon success">&#10003;</div>
-      <h2>Paid</h2>
+      <h2 id="paid-heading">Paid</h2>
       <p id="paid-amount"></p>
+
+      <div class="docket">
+        <span class="docket-eyebrow">Hand to the server</span>
+
+        <div class="docket-table-row">
+          <span class="docket-label">Table</span>
+          <strong id="docket-table" class="docket-table-no">–</strong>
+          <span id="docket-group" class="docket-group"></span>
+        </div>
+
+        <ul id="docket-items" class="docket-items"></ul>
+
+        <div id="docket-guests-wrap" class="docket-guests hidden">
+          <span class="docket-label">Guests at this table</span>
+          <p id="docket-guests" class="docket-guest-names"></p>
+        </div>
+
+        <p id="docket-footer" class="docket-footer"></p>
+      </div>
+
+      <div class="ticket-actions">
+        <button id="more-orders-btn" class="btn btn-primary" type="button">More drinks · same table</button>
+        <button id="another-table-btn" class="btn btn-secondary" type="button">Done · next table</button>
+      </div>
     </div>
 
     <div id="expired-state" class="result-state hidden">
@@ -130,12 +157,6 @@
         <button id="slip-retake-btn" class="btn btn-secondary hidden">Retake</button>
         <button id="slip-cancel-btn" class="btn btn-ghost">Cancel</button>
       </div>
-    </div>
-
-    <div id="slip-state" class="result-state hidden">
-      <div class="result-icon success">&#10003;</div>
-      <h2>Slip recorded</h2>
-      <p id="slip-amount"></p>
     </div>
 
     <input id="slip-input" type="file" accept="image/*" capture="environment" class="hidden">

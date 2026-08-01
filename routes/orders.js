@@ -59,6 +59,10 @@ function publicOrderView(order) {
     id: order.id,
     table: order.table,
     collectedBy: order.collectedBy,
+    // Seating snapshot, for the hand-off docket on the paid screen: the runner
+    // carrying the drinks needs the table's names to find who ordered.
+    tableGroup: order.tableGroup,
+    guests: (order.guests || []).map((g) => g.name),
     items: order.items,
     subtotal: order.subtotal,
     discount: order.discount,
