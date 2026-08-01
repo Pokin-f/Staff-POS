@@ -2,12 +2,12 @@ const MENU = {
   beer: {
     id: 'beer',
     name: 'Beer',
-    price: Number(process.env.PRICE_BEER || 80)
+    price: Number(process.env.PRICE_BEER || 390)
   },
   regency: {
     id: 'regency',
     name: 'Regency',
-    price: Number(process.env.PRICE_REGENCY || 150)
+    price: Number(process.env.PRICE_REGENCY || 590)
   }
 };
 

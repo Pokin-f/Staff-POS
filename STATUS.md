@@ -20,7 +20,7 @@ thing standing between the current state and being event-ready.
 | `GOOGLE_SHEET_ID` | *(empty)* | Sheet not created yet |
 | `service-account.json` | *missing* | Needed for Sheets auth |
 | `ORDER_EXPIRY_MINUTES` | `5` | Sized for auto-confirming QR; likely too short now (see below) |
-| Prices | Beer ฿80, Regency ฿150 | |
+| Prices | Beer ฿390, Regency ฿590 | |
 | Tables | 45, from the seating list | `TABLE_COUNT=30` is now fallback-only |
 
 ## Verified
