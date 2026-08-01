@@ -7,10 +7,19 @@ const { getMenu } = require('../config/menu');
 // instead of parsing a combined "Beer x1, Regency x1" string.
 const MENU = getMenu();
 const HEADER = [
-  'Timestamp', 'Order ID', 'Table', 'Table Group', 'Collected By', 'Staff',...MENU.map((m) => m.name),
+  'Timestamp', 'Order ID', 'Table', 'Table Group', 'Collected By', ...MENU.map((m) => m.name),
   'Subtotal (THB)', 'Discount (THB)', 'Coupon',
   'Total (THB)', 'Reference', 'Status', 'Slip', 'Guests at table'
 ];
+
+// Thailand has no DST, so a fixed +7h offset is exact — no timezone database
+// or extra dependency needed to get the Sheet showing local time.
+function bangkokTimestamp(date) {
+  const bkk = new Date(date.getTime() + 7 * 60 * 60 * 1000);
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${bkk.getUTCFullYear()}-${pad(bkk.getUTCMonth() + 1)}-${pad(bkk.getUTCDate())}T` +
+    `${pad(bkk.getUTCHours())}:${pad(bkk.getUTCMinutes())}:${pad(bkk.getUTCSeconds())}+07:00`;
+}
 
 // Column letter of the last header field — the header is written to A1:<LAST>1.
 const LAST_COLUMN = String.fromCharCode('A'.charCodeAt(0) + HEADER.length - 1);
@@ -119,7 +128,7 @@ async function appendPaidOrderRow(order) {
     valueInputOption: 'USER_ENTERED',
     requestBody: {
       values: [[
-        new Date(order.paidAt || Date.now()).toISOString(),
+        bangkokTimestamp(new Date(order.paidAt || Date.now())),
         order.id,
         order.table || '',
         order.tableGroup || '',

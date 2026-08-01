@@ -19,7 +19,7 @@ const { google } = require('googleapis');
 
 const KEY_FILE = path.resolve(process.env.GOOGLE_SERVICE_ACCOUNT_KEY_FILE || './service-account.json');
 const SHEET_ID = process.env.GOOGLE_SHEET_ID;
-const RANGE = process.env.GOOGLE_SHEET_RANGE || 'Sheet1!A:N';
+const RANGE = process.env.GOOGLE_SHEET_RANGE || 'Sheet1!A:O';
 
 const ok = (m) => console.log(`  \x1b[32m✓\x1b[0m ${m}`);
 const bad = (m) => console.log(`  \x1b[31m✗\x1b[0m ${m}`);
@@ -141,14 +141,18 @@ async function main() {
 
   // 5. Write access — the failure people hit most often is read-granted-only.
   if (process.argv.includes('--write')) {
-    const stamp = new Date().toISOString();
+    // Thailand has no DST, so a fixed +7h offset is exact.
+    const bkk = new Date(Date.now() + 7 * 60 * 60 * 1000);
+    const pad = (n) => String(n).padStart(2, '0');
+    const stamp = `${bkk.getUTCFullYear()}-${pad(bkk.getUTCMonth() + 1)}-${pad(bkk.getUTCDate())}T` +
+      `${pad(bkk.getUTCHours())}:${pad(bkk.getUTCMinutes())}:${pad(bkk.getUTCSeconds())}+07:00`;
     try {
       await sheets.spreadsheets.values.append({
         spreadsheetId: SHEET_ID,
         range: RANGE,
         valueInputOption: 'USER_ENTERED',
         requestBody: {
-          values: [[stamp, 'CONNECTION TEST', '—', '—', 0, 0, 0, 0, '', 0, '—', 'test', '', '']]
+          values: [[stamp, 'CONNECTION TEST', '—', '—', '—', 0, 0, 0, 0, '', 0, '—', 'test', '', '']]
         }
       });
     } catch (err) {
