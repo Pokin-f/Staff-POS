@@ -7,7 +7,7 @@ const { getMenu } = require('../config/menu');
 // instead of parsing a combined "Beer x1, Regency x1" string.
 const MENU = getMenu();
 const HEADER = [
-  'Timestamp', 'Order ID', 'Table', 'Table Group', ...MENU.map((m) => m.name),
+  'Timestamp', 'Order ID', 'Table', 'Table Group', 'Collected By', ...MENU.map((m) => m.name),
   'Subtotal (THB)', 'Discount (THB)', 'Coupon',
   'Total (THB)', 'Reference', 'Status', 'Slip', 'Guests at table'
 ];
@@ -95,6 +95,7 @@ async function appendPaidOrderRow(order) {
     // No Google creds needed in demo — just show what WOULD be logged.
     console.log(
       `[demo] would log to Sheet: order=${order.id} table=${order.table || '-'} ` +
+      `collectedBy=${order.collectedBy || '-'} ` +
       `items="${summarizeItems(order.items)}" subtotal=${order.subtotal} ` +
       `discount=${order.discount || 0} coupon=${order.coupon || '-'} total=${order.total} ` +
       `status=${statusLabel(order.status)} slip=${slipUrl(order) || '-'} ` +
@@ -122,6 +123,7 @@ async function appendPaidOrderRow(order) {
         order.id,
         order.table || '',
         order.tableGroup || '',
+        order.collectedBy || '',
         ...MENU.map((m) => qtyOf(order.items, m.id)),
         subtotal,
         order.discount || 0,

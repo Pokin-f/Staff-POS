@@ -36,7 +36,10 @@ const addColumns = [
   // accounting record stays correct even if the seating file is re-imported
   // later. This is what staff match the payment slip against.
   'guests_json TEXT',
-  'table_group TEXT'
+  'table_group TEXT',
+  // Which staff member took the money for this order. Picked on the tablet
+  // before the table, and written to the accounting sheet.
+  'collected_by TEXT'
 ];
 for (const col of addColumns) {
   const name = col.split(' ')[0];
@@ -170,6 +173,7 @@ function rowToOrder(row) {
     id: row.id,
     referenceNo: row.reference_no,
     table: row.table_no,
+    collectedBy: row.collected_by,
     items: JSON.parse(row.items_json),
     subtotal: row.subtotal,
     discount: row.discount,
@@ -188,15 +192,15 @@ function rowToOrder(row) {
 
 // Guests are looked up here rather than passed in, so every order gets the
 // seating snapshot automatically — there is no way to create one without it.
-function createOrder({ id, referenceNo, table, items, subtotal, discount, couponCode, total, expiresAt, qrImage }) {
+function createOrder({ id, referenceNo, table, collectedBy, items, subtotal, discount, couponCode, total, expiresAt, qrImage }) {
   const now = Date.now();
   const guests = getGuestsForTable(table);
   const groups = [...new Set(guests.map((g) => g.group).filter(Boolean))];
   db.prepare(`
-    INSERT INTO orders (id, reference_no, table_no, items_json, subtotal, discount, coupon_code, total, status, qr_image, created_at, expires_at, guests_json, table_group)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending_payment', ?, ?, ?, ?, ?)
+    INSERT INTO orders (id, reference_no, table_no, collected_by, items_json, subtotal, discount, coupon_code, total, status, qr_image, created_at, expires_at, guests_json, table_group)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending_payment', ?, ?, ?, ?, ?)
   `).run(
-    id, referenceNo, table || null, JSON.stringify(items), subtotal, discount || 0,
+    id, referenceNo, table || null, collectedBy || null, JSON.stringify(items), subtotal, discount || 0,
     couponCode || null, total, qrImage, now, expiresAt,
     guests.length ? JSON.stringify(guests) : null,
     groups.join(', ') || null

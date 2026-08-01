@@ -113,7 +113,14 @@ names. Key points:
   derives `LAST_COLUMN`. It includes one quantity column per menu item (from
   `config/menu.js`) rather than a combined "Beer x1, Regency x1" string. If you
   change it, update `GOOGLE_SHEET_RANGE` in `.env` and `.env.example` to match
-  (currently `A:N`).
+  (currently `A:O`).
+- **Who collected the order**: staff tap their own name (`config/staff.js`,
+  roster from the `STAFF_NAMES` env var) *before* the table, and it rides the
+  order through to the sheet's `Collected By` column. Deliberately never
+  rejected server-side — an off-roster or missing name is trimmed and logged as
+  written rather than failing checkout, because a blank cell is fixable after
+  the event and a refused order is not. The picker highlights the last-used
+  name (localStorage) but never pre-selects it, so attribution stays explicit.
 - **Slips** are written next to the DB (`dirname(DB_PATH)/slips`, bind-mounted
   to `./runtime-data` on the host, see `docker-compose.yml`) and served
   read-only at `/slips`. The Sheet renders the slip as an inline
@@ -133,9 +140,10 @@ Run the server and drive the real API — that is the only check available:
 ```bash
 npm start
 curl -s localhost:3000/api/orders/tables            # grid from seating data
+curl -s localhost:3000/api/orders/staff             # who's-collecting roster
 curl -s -X POST localhost:3000/api/orders \
   -H 'Content-Type: application/json' \
-  -d '{"table":"17","items":[{"id":"beer","qty":2}]}'
+  -d '{"table":"17","collectedBy":"Nok","items":[{"id":"beer","qty":2}]}'
 # then POST /api/orders/:id/slip with a base64 data URL to confirm payment
 ```
 

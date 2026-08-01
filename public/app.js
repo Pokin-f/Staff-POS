@@ -1,7 +1,12 @@
 (() => {
+  const staffScreen = document.getElementById('staff-screen');
   const tableScreen = document.getElementById('table-screen');
   const menuScreen = document.getElementById('menu-screen');
   const checkoutScreen = document.getElementById('checkout-screen');
+  const staffGridEl = document.getElementById('staff-grid');
+  const currentStaffEl = document.getElementById('current-staff');
+  const menuStaffEl = document.getElementById('menu-staff');
+  const ticketStaffEl = document.getElementById('ticket-staff');
   const tableGridEl = document.getElementById('table-grid');
   const currentTableEl = document.getElementById('current-table');
   const ticketTableEl = document.getElementById('ticket-table');
@@ -48,8 +53,12 @@
     regency: { image: 'images/regency.png', tone: 'regency', alt: 'Bottle of Regency brandy' }
   };
 
+  const LAST_STAFF_KEY = 'pos.lastCollector';
+
   let menu = [];
   const basket = {}; // { itemId: qty }
+  let staffRoster = [];
+  let selectedStaff = null;
   let selectedTable = null;
   let appliedCoupon = null; // { code, type, value }
   let currentOrderId = null;
@@ -152,10 +161,95 @@
   }
 
   function showScreen(screen) {
+    staffScreen.classList.toggle('hidden', screen !== 'staff');
     tableScreen.classList.toggle('hidden', screen !== 'table');
     menuScreen.classList.toggle('hidden', screen !== 'menu');
     checkoutScreen.classList.toggle('hidden', screen !== 'checkout');
   }
+
+  // ---- Who's collecting ----
+
+  // Every order starts here, so the accounting sheet always records which staff
+  // member took the money. The previous pick stays highlighted because the same
+  // person usually works a run of orders — one tap to confirm, not a hunt.
+  async function loadStaff() {
+    let list = [];
+    try {
+      const res = await fetch('/api/orders/staff');
+      if (res.ok) list = await res.json();
+    } catch (err) {
+      list = [];
+    }
+    staffRoster = Array.isArray(list) ? list : [];
+    renderStaff();
+  }
+
+  function lastStaff() {
+    try {
+      return localStorage.getItem(LAST_STAFF_KEY);
+    } catch (err) {
+      return null; // private mode / storage disabled — just don't pre-highlight
+    }
+  }
+
+  function rememberStaff(name) {
+    try {
+      localStorage.setItem(LAST_STAFF_KEY, name);
+    } catch (err) {
+      /* non-fatal */
+    }
+  }
+
+  function renderStaff() {
+    staffGridEl.innerHTML = '';
+
+    // If the roster never arrived (offline tablet, failed fetch) the picker
+    // must not become a dead end — offer an unnamed way through so the bar
+    // keeps serving. The order still logs, just without a collector.
+    if (staffRoster.length === 0) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'staff-btn staff-btn-unassigned';
+      btn.dataset.staff = '';
+      btn.textContent = 'Continue without name';
+      staffGridEl.appendChild(btn);
+      return;
+    }
+
+    const previous = lastStaff();
+    for (const name of staffRoster) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'staff-btn';
+      btn.dataset.staff = name;
+      btn.textContent = name;
+      if (name === previous) btn.classList.add('is-last');
+      staffGridEl.appendChild(btn);
+    }
+  }
+
+  function selectStaff(name) {
+    selectedStaff = name || '';
+    if (selectedStaff) rememberStaff(selectedStaff);
+    const label = selectedStaff || 'Unassigned';
+    currentStaffEl.textContent = label;
+    menuStaffEl.textContent = label;
+    showScreen('table');
+  }
+
+  staffGridEl.addEventListener('click', (e) => {
+    const btn = e.target.closest('.staff-btn');
+    if (!btn) return;
+    selectStaff(btn.dataset.staff);
+  });
+
+  function backToStaff() {
+    renderStaff(); // refresh the "last used" highlight
+    showScreen('staff');
+  }
+
+  document.getElementById('change-staff-btn').addEventListener('click', backToStaff);
+  document.getElementById('menu-change-staff-btn').addEventListener('click', backToStaff);
 
   async function loadTables() {
     const res = await fetch('/api/orders/tables');
@@ -287,12 +381,16 @@
     for (const key of Object.keys(basket)) delete basket[key];
     currentOrderId = null;
     selectedTable = null;
+    // Cleared so the next order is explicitly attributed rather than inheriting
+    // whoever ran the last one; the picker still highlights them for one tap.
+    selectedStaff = null;
     appliedCoupon = null;
     slipDataUrl = null;
     slipInput.value = '';
     renderCoupon();
     renderMenu();
-    showScreen('table');
+    renderStaff();
+    showScreen('staff');
   }
 
   function stopPolling() {
@@ -379,6 +477,7 @@
         body: JSON.stringify({
           items,
           table: selectedTable,
+          collectedBy: selectedStaff,
           couponCode: appliedCoupon ? appliedCoupon.code : undefined
         })
       });
@@ -403,6 +502,8 @@
     currentOrderId = order.id;
     checkoutAmount.textContent = money(order.total);
     ticketTableEl.textContent = order.table || selectedTable || '';
+    const collector = order.collectedBy || selectedStaff || '';
+    ticketStaffEl.textContent = collector ? ` · ${collector}` : '';
     qrImage.src = order.qrImage;
     applyPaymentMode(order.paymentMode, order.total);
     showCheckoutState('qr');
@@ -573,6 +674,7 @@
     }
   });
 
+  loadStaff();
   loadTables();
   loadMenu();
 })();

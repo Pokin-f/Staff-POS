@@ -16,9 +16,21 @@
   <h1 class="brand-title">What's it gonna be?</h1>
 </header>
 
-<main id="table-screen" class="screen">
+<main id="staff-screen" class="screen">
   <div class="table-select">
     <span class="table-select-eyebrow">Step 1</span>
+    <h2 class="table-select-title">Who's collecting this order?</h2>
+    <div id="staff-grid" class="staff-grid"></div>
+  </div>
+</main>
+
+<main id="table-screen" class="screen hidden">
+  <div class="table-select">
+    <div class="table-indicator">
+      <span class="table-indicator-label">Collected by <strong id="current-staff">–</strong></span>
+      <button id="change-staff-btn" class="btn-linky" type="button">Change</button>
+    </div>
+    <span class="table-select-eyebrow">Step 2</span>
     <h2 class="table-select-title">Which table are you on?</h2>
     <div id="table-grid" class="table-grid"></div>
     <button id="walkin-btn" class="btn btn-ghost table-walkin">Walk-in / No table</button>
@@ -28,7 +40,10 @@
 <main id="menu-screen" class="screen hidden">
   <div class="table-indicator">
     <span class="table-indicator-label">Table <strong id="current-table">–</strong></span>
-    <button id="change-table-btn" class="btn-linky" type="button">Change</button>
+    <button id="change-table-btn" class="btn-linky" type="button">Change table</button>
+    <span class="table-indicator-sep" aria-hidden="true">·</span>
+    <span class="table-indicator-label">Collected by <strong id="menu-staff">–</strong></span>
+    <button id="menu-change-staff-btn" class="btn-linky" type="button">Change staff</button>
   </div>
 
   <div id="menu-items" class="menu-grid"></div>
@@ -60,7 +75,7 @@
 <main id="checkout-screen" class="screen hidden">
   <div class="ticket">
     <div id="qr-state">
-      <span class="ticket-eyebrow">Scan to pay · Table <span id="ticket-table"></span></span>
+      <span class="ticket-eyebrow">Scan to pay · Table <span id="ticket-table"></span><span id="ticket-staff"></span></span>
       <p class="ticket-amount" id="checkout-amount">฿0</p>
       <p id="static-qr-hint" class="static-qr-hint hidden">
         This QR has no amount — the customer types <strong id="static-qr-amount">฿0</strong> in their banking app.

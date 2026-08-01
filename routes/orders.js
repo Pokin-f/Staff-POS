@@ -5,6 +5,7 @@ const store = require('../data/store');
 const menu = require('../config/menu');
 const tables = require('../config/tables');
 const coupons = require('../config/coupons');
+const staff = require('../config/staff');
 const gbprimepay = require('../services/gbprimepay');
 const slipStore = require('../services/slipStore');
 const { confirmOrderPaid, confirmOrderBySlip } = require('../services/paymentConfirmation');
@@ -57,6 +58,7 @@ function publicOrderView(order) {
   return {
     id: order.id,
     table: order.table,
+    collectedBy: order.collectedBy,
     items: order.items,
     subtotal: order.subtotal,
     discount: order.discount,
@@ -78,6 +80,11 @@ router.get('/menu', (req, res) => {
 
 router.get('/tables', (req, res) => {
   res.json(tables.getTables());
+});
+
+// Roster for the "who's collecting?" picker shown before the table grid.
+router.get('/staff', (req, res) => {
+  res.json(staff.getStaff());
 });
 
 // Pre-checkout coupon check for the order page. Soft only — does NOT reserve
@@ -105,6 +112,9 @@ router.post('/validate-coupon', (req, res) => {
 
 router.post('/', async (req, res) => {
   let lines, subtotal, table, coupon = null;
+  // Never rejected — see config/staff.js normalizeCollector. A blank cell in
+  // the Sheet is fixable after the event; a refused order at the till is not.
+  const collectedBy = staff.normalizeCollector(req.body.collectedBy);
   try {
     table = normalizeTable(req.body.table);
     ({ lines, total: subtotal } = buildOrderLines(req.body.items));
@@ -157,6 +167,7 @@ router.post('/', async (req, res) => {
     id,
     referenceNo,
     table,
+    collectedBy,
     items: lines,
     subtotal,
     discount,

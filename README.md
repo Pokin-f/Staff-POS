@@ -84,6 +84,25 @@ Guest data is also queryable directly:
 sqlite3 orders.sqlite "SELECT name, group_name, guest_type FROM guests WHERE table_no='17';"
 ```
 
+## Who collected the order
+
+Every order starts with **"Who's collecting this order?"** — staff tap their own
+name before they pick the table, and that name is written to the sheet's
+`Collected By` column. It's how the takings get reconciled per person at the end
+of the night.
+
+The roster is just `STAFF_NAMES` in `.env` (comma-separated) — no import step,
+because the crew list changes right up to the evening:
+
+```bash
+STAFF_NAMES=Ping,Nok,Bee,Golf
+```
+
+Leave it unset and the picker falls back to `Staff 1..4` and says so loudly in
+the boot log. The last person to take an order stays highlighted on the picker,
+so a staff member working a run of orders confirms with one tap. The name is
+recorded on the order, not on the device, so two people can share a tablet.
+
 ## How payment confirmation works (`gateway` mode)
 
 An order flips from `pending_payment` → `paid` the moment GBPrimePay confirms it,
@@ -120,9 +139,9 @@ double-logged.
 - Note the spreadsheet ID from its URL:
   `https://docs.google.com/spreadsheets/d/`**`THIS_PART`**`/edit`.
 - No need to add a header row — the app writes one automatically on the first
-  paid order and won't duplicate it if one already exists. Columns (A:N):
+  paid order and won't duplicate it if one already exists. Columns (A:O):
 
-  `Timestamp | Order ID | Table | Table Group | Beer | Regency | Subtotal (THB) | Discount (THB) | Coupon | Total (THB) | Reference | Status | Slip | Guests at table`
+  `Timestamp | Order ID | Table | Table Group | Collected By | Beer | Regency | Subtotal (THB) | Discount (THB) | Coupon | Total (THB) | Reference | Status | Slip | Guests at table`
 
   One quantity column per menu item (from `config/menu.js`), so accounting can
   sum/filter per drink instead of parsing a combined string. Slip is a
@@ -167,9 +186,10 @@ cp .env.example .env
 | `GBPRIMEPAY_TOKEN` / `GBPRIMEPAY_PUBLIC_KEY` / `GBPRIMEPAY_SECRET_KEY` | From your GBPrimePay dashboard |
 | `ORDER_EXPIRY_MINUTES` | How long an unpaid QR stays valid (default `5`) |
 | `PRICE_BEER` / `PRICE_REGENCY` | Prices in THB |
+| `STAFF_NAMES` | Comma-separated crew on the till, e.g. `Ping,Nok,Bee` — the "who's collecting?" picker |
 | `GOOGLE_SERVICE_ACCOUNT_KEY_FILE` | Leave as `/app/service-account.json` for Docker |
 | `GOOGLE_SHEET_ID` | The spreadsheet ID from step 2 |
-| `GOOGLE_SHEET_RANGE` | Default `Sheet1!A:N` |
+| `GOOGLE_SHEET_RANGE` | Default `Sheet1!A:O` |
 | `TABLE_COUNT` | Fallback only — the grid comes from the imported seating list |
 
 Then put your Google key file next to `docker-compose.yml`:

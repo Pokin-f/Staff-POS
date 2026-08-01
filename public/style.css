@@ -63,6 +63,57 @@ img:focus-visible {
   color: var(--paper);
 }
 
+/* ---------- Staff select screen ---------- */
+
+/* Fewer, wider targets than the table grid: names need room to read, and this
+   is the first tap of every order so it has to be unmissable. */
+.staff-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: clamp(10px, 1.8vw, 16px);
+  max-width: 760px;
+  padding: clamp(12px, 2vw, 22px);
+  background:
+    linear-gradient(180deg, rgba(29, 33, 41, 0.5) 0%, rgba(22, 25, 31, 0.5) 100%);
+  border: 1px solid rgba(199, 165, 66, 0.18);
+  border-radius: 22px;
+}
+.staff-btn {
+  min-height: 78px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1px solid rgba(199, 165, 66, 0.3);
+  background: var(--surface);
+  color: var(--paper);
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: clamp(17px, 2.4vw, 22px);
+  line-height: 1.2;
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease, transform 0.08s ease;
+}
+/* Whoever ran the last order — usually the same person, so make the repeat
+   tap obvious without pre-selecting it for them. */
+.staff-btn.is-last {
+  border-color: var(--brass);
+  box-shadow: inset 0 0 0 1px rgba(199, 165, 66, 0.35);
+}
+.staff-btn-unassigned {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--muted);
+}
+.staff-btn:hover {
+  border-color: var(--brass);
+}
+.staff-btn:active {
+  background: var(--brass);
+  border-color: var(--brass);
+  color: var(--ink);
+  transform: scale(0.97);
+}
+
 /* ---------- Table select screen ---------- */
 
 .table-select {
@@ -168,6 +219,15 @@ img:focus-visible {
 }
 .table-indicator-label strong {
   color: var(--brass);
+}
+/* Separates the table pair from the collector pair so the two "Change" links
+   never read as belonging to the same thing. */
+.table-indicator-sep {
+  color: rgba(199, 165, 66, 0.35);
+}
+/* The collector line sits above the step heading on the table screen. */
+.table-select .table-indicator {
+  margin-bottom: 18px;
 }
 .btn-linky {
   border: none;
