@@ -122,6 +122,25 @@ Two ways on:
   same collector, basket empty.
 - **Done · next table** — back to the table grid, collector kept.
 
+## The to-serve tray
+
+A **To serve** button sits in the topbar of every screen with a count badge; it
+turns red the moment anything is waiting. Tapping it opens the backlog of paid
+orders that haven't been carried out yet, **one box per table** — two tables
+waiting means two boxes, and a table that ordered twice shows both orders in
+its own box.
+
+Each order shows the drinks, who took it, how long it's been waiting (red past
+10 minutes) and the amount, with a **Served** button that clears it off the
+tray. The state lives in the DB (`served_at`), not the page, so a tablet reload
+or a second device sees the same backlog, and two staff tapping Served on the
+same order can't double-handle it.
+
+```bash
+curl -s localhost:3000/api/orders/open          # what's still waiting
+curl -s -X POST localhost:3000/api/orders/<id>/serve
+```
+
 ## How payment confirmation works (`gateway` mode)
 
 An order flips from `pending_payment` → `paid` the moment GBPrimePay confirms it,

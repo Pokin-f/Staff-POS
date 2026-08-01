@@ -45,7 +45,186 @@ img:focus-visible {
 
 .topbar {
   padding: 28px 24px 6px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
 }
+.topbar-brand {
+  min-width: 0;
+}
+
+/* ---------- To-serve tray ---------- */
+
+/* Present on every screen: the staff must be able to see the backlog without
+   losing whatever they're in the middle of. */
+.tray-btn {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(199, 165, 66, 0.3);
+  background: var(--surface);
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.tray-count {
+  min-width: 26px;
+  padding: 2px 6px;
+  border-radius: 8px;
+  background: var(--surface-2);
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 600;
+  text-align: center;
+}
+/* Anything waiting turns the button live — it should catch the eye across the
+   bar without needing to be read. */
+.tray-btn.has-orders {
+  border-color: var(--ember);
+  color: var(--paper);
+}
+.tray-btn.has-orders .tray-count {
+  background: var(--ember);
+  color: var(--paper);
+}
+
+.tray-panel {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  background: rgba(6, 7, 9, 0.72);
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 24px 16px;
+  overflow-y: auto;
+}
+.tray-sheet {
+  width: 100%;
+  max-width: 720px;
+  background: var(--surface);
+  border: 1px solid rgba(199, 165, 66, 0.28);
+  border-radius: 18px;
+  padding: 20px;
+}
+.tray-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.tray-eyebrow {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.tray-title {
+  margin: 4px 0 0;
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 600;
+  font-size: 22px;
+  color: var(--paper);
+}
+.tray-list {
+  display: grid;
+  gap: 12px;
+}
+/* One box per table — two tables waiting reads as two boxes at a glance. */
+.tray-table {
+  border: 1px solid rgba(199, 165, 66, 0.22);
+  border-radius: 14px;
+  background: var(--surface-2);
+  padding: 14px 16px;
+}
+.tray-table-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+.tray-table-label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.tray-table-no {
+  font-family: var(--font-display);
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--brass);
+}
+.tray-table-group {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--muted);
+}
+.tray-guests {
+  margin: 8px 0 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+.tray-orders {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+.tray-order {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(199, 165, 66, 0.14);
+}
+.tray-order-body {
+  min-width: 0;
+}
+.tray-order-items {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 19px;
+  font-weight: 600;
+  color: var(--paper);
+}
+.tray-order-meta {
+  margin: 3px 0 0;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--muted);
+}
+.tray-order-meta.is-late {
+  color: var(--ember);
+}
+.tray-serve-btn {
+  flex: none;
+  padding: 12px 20px;
+}
+.tray-empty {
+  margin: 0;
+  padding: 18px 4px;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+/* ---------- Header ---------- */
+
 .brand-eyebrow {
   display: block;
   font-family: var(--font-mono);

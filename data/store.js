@@ -39,7 +39,12 @@ const addColumns = [
   'table_group TEXT',
   // Which staff member took the money for this order. Picked on the tablet
   // before the table, and written to the accounting sheet.
-  'collected_by TEXT'
+  'collected_by TEXT',
+  // When the drinks actually reached the table. Paid-but-unserved orders are
+  // what the "to serve" tray lists; this is the flag that clears them off it.
+  // Deliberately separate from `status`: serving is a floor concern and must
+  // never be confused with whether the money arrived.
+  'served_at INTEGER'
 ];
 for (const col of addColumns) {
   const name = col.split(' ')[0];
@@ -186,7 +191,8 @@ function rowToOrder(row) {
     guests: row.guests_json ? JSON.parse(row.guests_json) : [],
     createdAt: row.created_at,
     expiresAt: row.expires_at,
-    paidAt: row.paid_at
+    paidAt: row.paid_at,
+    servedAt: row.served_at
   };
 }
 
@@ -239,6 +245,28 @@ function markPaidBySlip(id, slipPath) {
     UPDATE orders SET status = 'paid_slip', paid_at = ?, slip_path = ?
     WHERE id = ? AND status IN ('pending_payment', 'expired')
   `).run(Date.now(), slipPath, id);
+  return { order: getOrder(id), transitioned: info.changes > 0 };
+}
+
+// Paid orders whose drinks haven't been carried out yet, oldest first — the
+// backlog the staff work through. Survives a tablet reload or a second device,
+// because it lives in the DB rather than in the page.
+function getOpenOrders() {
+  return db.prepare(`
+    SELECT * FROM orders
+    WHERE status IN ('paid', 'paid_slip') AND served_at IS NULL
+    ORDER BY paid_at ASC
+  `).all().map(rowToOrder);
+}
+
+// Same { order, transitioned } contract as markPaid: only the call that
+// actually clears the order off the tray reports true, so two staff tapping
+// "served" on two tablets can't double-handle it.
+function markServed(id) {
+  const info = db.prepare(`
+    UPDATE orders SET served_at = ?
+    WHERE id = ? AND served_at IS NULL AND status IN ('paid', 'paid_slip')
+  `).run(Date.now(), id);
   return { order: getOrder(id), transitioned: info.changes > 0 };
 }
 
@@ -312,6 +340,8 @@ module.exports = {
   getOrderByReferenceNo,
   markPaid,
   markPaidBySlip,
+  getOpenOrders,
+  markServed,
   markExpired,
   markCancelled,
   sweepExpiredOrders,

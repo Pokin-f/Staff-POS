@@ -12,9 +12,33 @@
 <body>
 
 <header class="topbar">
-  <span class="brand-eyebrow">Staff Operator POS 45th PRE Aniversary Reunion</span>
-  <h1 class="brand-title">What's it gonna be?</h1>
+  <div class="topbar-brand">
+    <span class="brand-eyebrow">Staff Operator POS 45th PRE Aniversary Reunion</span>
+    <h1 class="brand-title">What's it gonna be?</h1>
+  </div>
+  <!-- On every screen: the paid orders still waiting to be carried out. -->
+  <button id="tray-btn" class="tray-btn" type="button">
+    <span class="tray-btn-label">To serve</span>
+    <span id="tray-count" class="tray-count">0</span>
+  </button>
 </header>
+
+<!-- Orders waiting to be served, one box per table. -->
+<div id="tray-panel" class="tray-panel hidden">
+  <div class="tray-sheet">
+    <div class="tray-head">
+      <div>
+        <span class="tray-eyebrow">Waiting to be served</span>
+        <h2 id="tray-title" class="tray-title">Nothing waiting</h2>
+      </div>
+      <button id="tray-close-btn" class="btn btn-ghost" type="button">Close</button>
+    </div>
+    <div id="tray-list" class="tray-list"></div>
+    <p id="tray-empty" class="tray-empty hidden">
+      Every paid order has been carried out. Tap Close to take the next one.
+    </p>
+  </div>
+</div>
 
 <main id="staff-screen" class="screen">
   <div class="table-select">

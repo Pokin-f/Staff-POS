@@ -71,6 +71,8 @@ function publicOrderView(order) {
     status: order.status,
     qrImage: order.qrImage,
     expiresAt: order.expiresAt,
+    paidAt: order.paidAt,
+    servedAt: order.servedAt,
     // Tells the checkout screen which payment model it's rendering. With
     // 'static_qr' there is no gateway confirmation, so the UI promotes slip
     // capture and drops the "Check now" button.
@@ -89,6 +91,13 @@ router.get('/tables', (req, res) => {
 // Roster for the "who's collecting?" picker shown before the table grid.
 router.get('/staff', (req, res) => {
   res.json(staff.getStaff());
+});
+
+// Paid orders still waiting to be carried out — the tray behind the "To serve"
+// button. Must be declared before '/:id' or the literal path is swallowed by
+// the wildcard.
+router.get('/open', (req, res) => {
+  res.json(store.getOpenOrders().map(publicOrderView));
 });
 
 // Pre-checkout coupon check for the order page. Soft only — does NOT reserve
@@ -214,6 +223,17 @@ router.get('/:id', async (req, res) => {
     }
   }
 
+  res.json(publicOrderView(order));
+});
+
+// "Served" — the drinks reached the table, so drop the order off the tray.
+// Idempotent: a second tap (or a second tablet) just returns the order.
+router.post('/:id/serve', (req, res) => {
+  const { order } = store.markServed(req.params.id);
+  if (!order) return res.status(404).json({ error: 'Order not found' });
+  if (!['paid', 'paid_slip'].includes(order.status)) {
+    return res.status(409).json({ error: `Order is ${order.status}, not paid` });
+  }
   res.json(publicOrderView(order));
 });
 

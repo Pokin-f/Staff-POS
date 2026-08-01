@@ -55,6 +55,13 @@
   const countdownEl = document.getElementById('countdown');
   const paidAmountEl = document.getElementById('paid-amount');
 
+  const trayBtn = document.getElementById('tray-btn');
+  const trayCountEl = document.getElementById('tray-count');
+  const trayPanel = document.getElementById('tray-panel');
+  const trayList = document.getElementById('tray-list');
+  const trayEmpty = document.getElementById('tray-empty');
+  const trayTitle = document.getElementById('tray-title');
+
   const ITEM_META = {
     beer: { image: 'images/beer_pitcher.png', tone: 'beer', alt: 'Bottle of Chang beer' },
     regency: { image: 'images/regency.png', tone: 'regency', alt: 'Bottle of Regency brandy' }
@@ -75,6 +82,7 @@
   let slipStream = null; // active getUserMedia stream, if the in-page camera is on
   let pollTimer = null;
   let countdownTimer = null;
+  let openOrders = []; // paid, not yet carried out
 
   function money(n) {
     return `฿${Number(n).toFixed(0)}`;
@@ -378,16 +386,21 @@
 
   // ---- Hand-off docket ----
 
+  // Same convention as the table grid: the dominant group, with a "+" when the
+  // table seats more than one. The full list runs six codes wide on some
+  // tables and would bury the table number it sits next to.
+  function groupLabel(tableGroup) {
+    const groups = (tableGroup || '').split(',').map((g) => g.trim()).filter(Boolean);
+    if (groups.length === 0) return '';
+    return groups.length > 1 ? `${groups[0]} +` : groups[0];
+  }
+
   // What the server staff needs to act on: the drinks to carry, the table to
   // carry them to, and who is sitting there. Built from the order the server
   // returned (not local state) so it reflects what was actually recorded.
   function renderDocket(order) {
     docketTableEl.textContent = order.table || selectedTable || '–';
-    // Same convention as the table grid: the dominant group, with a "+" when
-    // the table seats more than one. The full list is six codes wide on some
-    // tables and would bury the table number it sits next to.
-    const groups = (order.tableGroup || '').split(',').map((g) => g.trim()).filter(Boolean);
-    docketGroupEl.textContent = groups.length > 1 ? `${groups[0]} +` : (groups[0] || '');
+    docketGroupEl.textContent = groupLabel(order.tableGroup);
 
     docketItemsEl.innerHTML = '';
     for (const line of order.items || []) {
@@ -502,6 +515,7 @@
       paidAmountEl.textContent = `${money(order.total)} received`;
       renderDocket(order);
       showCheckoutState('paid');
+      refreshTray();
     } else if (order.status === 'expired') {
       stopPolling();
       stopCountdown();
@@ -741,6 +755,7 @@
       paidAmountEl.textContent = `${money(order.total)} recorded from slip`;
       renderDocket(order);
       showCheckoutState('slip');
+      refreshTray();
     } catch (err) {
       alert(err.message);
     } finally {
@@ -748,7 +763,163 @@
     }
   });
 
+  // ---- To-serve tray ----
+  //
+  // Every paid order that hasn't been carried out yet, grouped into one box per
+  // table — two tables waiting means two boxes. Reachable from every screen,
+  // and served off with one tap. State lives in the DB (served_at), not the
+  // page, so a reload or a second tablet sees the same backlog.
+
+  function minutesSince(ts) {
+    if (!ts) return 0;
+    return Math.max(0, Math.floor((Date.now() - ts) / 60000));
+  }
+
+  function waitedLabel(ts) {
+    const mins = minutesSince(ts);
+    if (mins < 1) return 'just now';
+    if (mins < 60) return `${mins} min ago`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `${hours}h ${mins % 60}m ago`;
+    return `${Math.floor(hours / 24)}d ago`;
+  }
+
+  function groupOrdersByTable(orders) {
+    const byTable = new Map();
+    for (const order of orders) {
+      const key = order.table || 'Walk-in';
+      if (!byTable.has(key)) {
+        byTable.set(key, { table: key, tableGroup: order.tableGroup, guests: order.guests || [], orders: [] });
+      }
+      byTable.get(key).orders.push(order);
+    }
+    // Longest-waiting table first — that's the one someone is still thirsty at.
+    return [...byTable.values()].sort((a, b) => (a.orders[0].paidAt || 0) - (b.orders[0].paidAt || 0));
+  }
+
+  function renderTrayCount() {
+    trayCountEl.textContent = String(openOrders.length);
+    trayBtn.classList.toggle('has-orders', openOrders.length > 0);
+  }
+
+  function renderTray() {
+    const tables = groupOrdersByTable(openOrders);
+    trayList.innerHTML = '';
+    trayEmpty.classList.toggle('hidden', tables.length > 0);
+    trayTitle.textContent = tables.length === 0
+      ? 'Nothing waiting'
+      : `${openOrders.length} order${openOrders.length === 1 ? '' : 's'} · ${tables.length} table${tables.length === 1 ? '' : 's'}`;
+
+    for (const entry of tables) {
+      const box = document.createElement('section');
+      box.className = 'tray-table';
+
+      const head = document.createElement('header');
+      head.className = 'tray-table-head';
+      head.innerHTML =
+        `<span class="tray-table-label">Table</span>` +
+        `<strong class="tray-table-no"></strong>` +
+        `<span class="tray-table-group"></span>`;
+      head.querySelector('.tray-table-no').textContent = entry.table;
+      head.querySelector('.tray-table-group').textContent = groupLabel(entry.tableGroup);
+      box.appendChild(head);
+
+      if (entry.guests.length) {
+        const guests = document.createElement('p');
+        guests.className = 'tray-guests';
+        guests.textContent = entry.guests.join(' · ');
+        box.appendChild(guests);
+      }
+
+      const list = document.createElement('ul');
+      list.className = 'tray-orders';
+      for (const order of entry.orders) {
+        const li = document.createElement('li');
+        li.className = 'tray-order';
+
+        const body = document.createElement('div');
+        body.className = 'tray-order-body';
+
+        const items = document.createElement('p');
+        items.className = 'tray-order-items';
+        items.textContent = (order.items || []).map((l) => `${l.qty}× ${l.name}`).join(' · ');
+
+        const meta = document.createElement('p');
+        meta.className = 'tray-order-meta';
+        const waited = waitedLabel(order.paidAt);
+        meta.textContent = order.collectedBy
+          ? `${order.collectedBy} · ${waited} · ${money(order.total)}`
+          : `${waited} · ${money(order.total)}`;
+        // Ten minutes on the tray means something went wrong on the floor.
+        if (minutesSince(order.paidAt) >= 10) meta.classList.add('is-late');
+
+        body.appendChild(items);
+        body.appendChild(meta);
+
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'btn btn-primary tray-serve-btn';
+        btn.dataset.id = order.id;
+        btn.textContent = 'Served';
+
+        li.appendChild(body);
+        li.appendChild(btn);
+        list.appendChild(li);
+      }
+      box.appendChild(list);
+      trayList.appendChild(box);
+    }
+  }
+
+  async function refreshTray() {
+    try {
+      const res = await fetch('/api/orders/open');
+      if (!res.ok) return;
+      openOrders = await res.json();
+    } catch (err) {
+      return; // keep the last known list rather than blanking the tray
+    }
+    renderTrayCount();
+    if (!trayPanel.classList.contains('hidden')) renderTray();
+  }
+
+  function openTray() {
+    renderTray();
+    trayPanel.classList.remove('hidden');
+    refreshTray();
+  }
+
+  trayBtn.addEventListener('click', openTray);
+  document.getElementById('tray-close-btn').addEventListener('click', () => {
+    trayPanel.classList.add('hidden');
+  });
+  // Tapping the dimmed backdrop closes too, but not a tap inside the sheet.
+  trayPanel.addEventListener('click', (e) => {
+    if (e.target === trayPanel) trayPanel.classList.add('hidden');
+  });
+
+  trayList.addEventListener('click', async (e) => {
+    const btn = e.target.closest('.tray-serve-btn');
+    if (!btn) return;
+    btn.disabled = true;
+    try {
+      const res = await fetch(`/api/orders/${btn.dataset.id}/serve`, { method: 'POST' });
+      if (!res.ok) throw new Error('Could not mark it served');
+      // Drop it locally first so the box disappears on the tap, then reconcile.
+      openOrders = openOrders.filter((o) => o.id !== btn.dataset.id);
+      renderTrayCount();
+      renderTray();
+      refreshTray();
+    } catch (err) {
+      btn.disabled = false;
+      alert('Could not mark that order served. Try again.');
+    }
+  });
+
   loadStaff();
   loadTables();
   loadMenu();
+  refreshTray();
+  // Cheap heartbeat so the badge stays honest if another tablet takes an order.
+  setInterval(refreshTray, 15000);
 })();

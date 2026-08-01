@@ -132,6 +132,14 @@ names. Key points:
 - **Frontend** is one IIFE in `public/app.js`; screens and checkout states are
   toggled by `hidden` class via `showScreen()` / `showCheckoutState()`. No
   framework, no build.
+- **The to-serve tray** (`served_at` on `orders`, `GET /api/orders/open`,
+  `POST /api/orders/:id/serve`) is the backlog of paid-but-undelivered orders,
+  reachable from a topbar button on every screen and grouped **one box per
+  table**. `served_at` is deliberately a separate column from `status` — serving
+  is a floor concern and must never be confused with whether the money arrived.
+  `markServed()` keeps the same `{ order, transitioned }` contract as
+  `markPaid()`, so two tablets can't double-handle one order. The tray reads
+  from the DB, not page state, so a reload or a second device sees the same list.
 - **The paid screen is a hand-off docket**, not a receipt: table number, the
   drinks to carry, and the table's guest names, for the server staff who
   actually delivers the order. Both paid paths (`paid` and `slip`) render the
